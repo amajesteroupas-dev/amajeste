@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f3ee;
+  --foreground: #121212;
+  --muted: #6b6560;
+  --gold: #c4a35a;
+  --gold-dark: #9a7b3c;
+  --rose: #b76e79;
+  --rose-dark: #8f4f59;
+  --ink: #0c0c0c;
+  --surface: #fffdfb;
+  --line: rgba(18, 18, 18, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-gold: var(--gold);
+  --color-gold-dark: var(--gold-dark);
+  --color-rose: var(--rose);
+  --color-rose-dark: var(--rose-dark);
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), Georgia, serif;
+  min-height: 100vh;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--gold) 40%, white);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.container-maj {
+  width: min(1180px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.6rem;
+  font-family: var(--font-body), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--rose-dark);
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.hero-animate {
+  animation: heroRise 0.9s ease both;
+}
+
+.hero-animate-delay {
+  animation: heroRise 0.9s ease 0.15s both;
+}
+
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-card:hover .product-img {
+  transform: scale(1.04);
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--foreground);
+  font: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--gold);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: color-mix(in oklab, var(--gold) 20%, white);
+  color: var(--ink);
+}

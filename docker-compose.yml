@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: majeste
+      POSTGRES_PASSWORD: majeste_secret
+      POSTGRES_DB: majeste
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U majeste -d majeste"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://majeste:majeste_secret@postgres:5432/majeste?schema=public
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://amajeste.com.br}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@amajeste.com.br}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
+      MERCADOPAGO_PUBLIC_KEY: ${MERCADOPAGO_PUBLIC_KEY:-}
+      MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:-}
+      MELHOR_ENVIO_TOKEN: ${MELHOR_ENVIO_TOKEN:-}
+      MELHOR_ENVIO_SANDBOX: ${MELHOR_ENVIO_SANDBOX:-false}
+      REDIS_URL: redis://redis:6379
+      UPLOAD_DIR: /app/uploads
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://amajeste.com.br}
+      NEXT_PUBLIC_SITE_NAME: Majesté
+    volumes:
+      - uploads_data:/app/uploads
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - uploads_data:/var/www/uploads:ro
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

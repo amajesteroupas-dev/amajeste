@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0e6da"/>
+      <stop offset="100%" stop-color="#d9c4b0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <circle cx="620" cy="280" r="180" fill="#e8b9a4" opacity="0.45"/>
+  <circle cx="180" cy="720" r="220" fill="#c4a35a" opacity="0.18"/>
+  <text x="400" y="480" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#1a1a1a">Majesté</text>
+  <text x="400" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6b6560" letter-spacing="4">VISTA SUA FORÇA</text>
+</svg>

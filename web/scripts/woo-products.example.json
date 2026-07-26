@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Exemplo Conjunto Woo",
+    "slug": "exemplo-conjunto-woo",
+    "description": "<p>Produto importado do WooCommerce</p>",
+    "regular_price": "159.90",
+    "sku": "WOO-EX-001",
+    "stock_quantity": 15,
+    "categories": [{ "name": "Conjunto Legging", "slug": "conjunto-legging" }],
+    "images": [{ "src": "/placeholders/default.svg", "alt": "Exemplo" }],
+    "variations_data": [
+      {
+        "sku": "WOO-EX-001-M-PRETO",
+        "stock_quantity": 8,
+        "attributes": [
+          { "name": "Tamanho", "option": "M" },
+          { "name": "Cor", "option": "Preto" }
+        ]
+      },
+      {
+        "sku": "WOO-EX-001-G-PRETO",
+        "stock_quantity": 7,
+        "attributes": [
+          { "name": "Tamanho", "option": "G" },
+          { "name": "Cor", "option": "Preto" }
+        ]
+      }
+    ]
+  }
+]
