@@ -1,7 +1,7 @@
-# Deploy automático no Hostinger KVM via GitHub Actions
-# Dispara em push na main. Configure os secrets no repositório.
+# Deploy isolado no KVM — NÃO sobe Nginx na 80/443
+# Não altera configs de outros sites. Apenas atualiza /var/www/majeste
 
-name: Deploy KVM
+name: Deploy Majesté (isolado)
 
 on:
   push:
@@ -24,24 +24,28 @@ jobs:
             set -e
             APP_DIR="${{ secrets.KVM_APP_DIR }}"
             if [ -z "$APP_DIR" ]; then APP_DIR=/var/www/majeste; fi
+
+            # Pasta exclusiva da Majesté — não mexe em outros projetos
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
+
             if [ ! -d .git ]; then
               git clone ${{ secrets.REPO_URL }} .
             else
               git fetch origin main
               git reset --hard origin/main
             fi
+
             if [ ! -f .env ]; then
-              echo "ERRO: crie o arquivo .env no servidor em $APP_DIR/.env"
+              echo "ERRO: crie $APP_DIR/.env antes do deploy"
               exit 1
             fi
-            docker compose pull || true
-            docker compose build web
-            docker compose up -d postgres redis
+
+            # Projeto Docker nomeado "majeste" — volumes/rede isolados
+            docker compose -p majeste build web
+            docker compose -p majeste up -d postgres redis
             sleep 5
-            docker compose run --rm web npx prisma migrate deploy
-            docker compose up -d web
-            docker compose --profile production up -d nginx || true
-            docker compose ps
-            echo "Deploy concluído"
+            docker compose -p majeste run --rm web npx prisma migrate deploy
+            docker compose -p majeste up -d web
+            docker compose -p majeste ps
+            echo "OK: Majesté em 127.0.0.1:3001 (proxy do domínio precisa apontar para essa porta)"

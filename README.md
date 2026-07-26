@@ -34,23 +34,22 @@ npm run dev
 - Admin: http://localhost:3000/admin/login  
 - Login padrão: `admin@amajeste.com.br` / `admin123`
 
-## Produção (Hostinger KVM 4)
+## Produção (Hostinger KVM 4) — ao lado de outros sites
 
-1. Aponte o DNS de `amajeste.com.br` para o IP do VPS.
-2. Clone o repositório no servidor.
-3. Crie `.env` na raiz com secrets reais (`NEXTAUTH_SECRET`, Mercado Pago, Melhor Envio).
-4. Execute:
+A Majesté roda **isolada** e **não** ocupa as portas 80/443 do servidor:
+
+1. App em `127.0.0.1:3001` (Docker project `majeste`)
+2. Pasta exclusiva `/var/www/majeste`
+3. Você só adiciona um virtual host no Nginx/Apache **já existente** apontando o domínio para a porta 3001
+
+Guia completo: [docs/COEXISTENCIA-KVM.md](docs/COEXISTENCIA-KVM.md)
 
 ```bash
 chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
-5. SSL (Let's Encrypt) — gere certificados e copie para `nginx/certs/`, depois:
-
-```bash
-docker compose --profile production up -d nginx
-```
+Não use `certbot --standalone` nem substitua o `nginx.conf` global.
 
 ## Importar produtos do WooCommerce
 

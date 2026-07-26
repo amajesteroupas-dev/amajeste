@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy helper for Hostinger KVM 4
-# Usage (on the VPS):
-#   chmod +x scripts/deploy.sh
-#   ./scripts/deploy.sh
+# Deploy seguro ao lado de outros sites
+# - Projeto Docker: majeste
+# - Porta: 127.0.0.1:3001
+# - Não sobe Nginx/Apache próprio
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if [ ! -f .env ]; then
-  echo "Crie o arquivo .env na raiz (copie de web/.env.example)"
+  echo "Crie .env a partir de .env.example"
   exit 1
 fi
 
-mkdir -p nginx/certs uploads
-docker compose pull || true
-docker compose build web
-docker compose up -d postgres redis
+docker compose -p majeste build web
+docker compose -p majeste up -d postgres redis
 sleep 5
-docker compose run --rm web npx prisma migrate deploy
-docker compose up -d web
+docker compose -p majeste run --rm web npx prisma migrate deploy
+docker compose -p majeste up -d web
+docker compose -p majeste ps
 
-echo "App no ar em :3000 (ou via nginx com profile production)"
-echo "Para SSL: coloque fullchain.pem e privkey.pem em nginx/certs e rode:"
-echo "  docker compose --profile production up -d nginx"
+echo ""
+echo "Majesté rodando em 127.0.0.1:3001"
+echo "Adicione o vhost do domínio apontando para essa porta."
+echo "Veja: docs/COEXISTENCIA-KVM.md e nginx/amajeste-vhost.conf"
