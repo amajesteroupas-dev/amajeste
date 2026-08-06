@@ -1,0 +1,255 @@
+================================================================================
+MAJESTÉ MODA FITNESS — Homologação PagBank
+Requests e Responses das APIs utilizadas na integração
+================================================================================
+
+Loja: Majesté moda fitness
+Site: https://equilibra.tech (e domínio da loja)
+E-mail da conta: santos10.j@hotmail.com
+
+Integração utilizada:
+  Checkout PagBank (hospedado)
+  Documentação: https://developer.pagbank.com.br/reference/criar-checkout
+  Guia: https://developer.pagbank.com.br/docs/checkout-pagbank
+
+Fluxo resumido:
+  1) O cliente finaliza o pedido no site da loja.
+  2) O backend cria um Checkout na API PagBank (POST /checkouts).
+  3) O cliente é redirecionado para a página de pagamento do PagBank
+     (cartão, Pix etc. — dados sensíveis de cartão NÃO passam pelo nosso servidor).
+  4) Após o pagamento, o PagBank notifica nosso webhook e o cliente retorna
+     para a URL de sucesso da loja.
+
+Ambientes:
+  Sandbox:    https://sandbox.api.pagseguro.com
+  Produção:   https://api.pagseguro.com
+
+Autenticação (todos os endpoints):
+  Authorization: Bearer <TOKEN_DO_VENDEDOR>
+  Content-Type: application/json
+  Accept: application/json
+
+Observação de segurança:
+  Não utilizamos reCAPTCHA próprio na página de pagamento do cartão,
+  porque o pagamento ocorre na página hospedada do PagBank.
+
+
+================================================================================
+1) CRIAR CHECKOUT — POST /checkouts
+================================================================================
+
+Endpoint Sandbox:
+  POST https://sandbox.api.pagseguro.com/checkouts
+
+Endpoint Produção:
+  POST https://api.pagseguro.com/checkouts
+
+
+---------- REQUEST (exemplo real da integração) ----------
+
+POST /checkouts HTTP/1.1
+Host: sandbox.api.pagseguro.com
+Authorization: Bearer <TOKEN_SANDBOX_VENDEDOR>
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reference_id": "MJ-20260729-0001",
+  "customer": {
+    "name": "Maria da Silva",
+    "email": "maria.silva@email.com",
+    "tax_id": "12345678909"
+  },
+  "items": [
+    {
+      "reference_id": "item-1",
+      "name": "Conjunto Legging Majesté",
+      "quantity": 1,
+      "unit_amount": 18990
+    }
+  ],
+  "additional_amount": 1590,
+  "redirect_url": "https://equilibra.tech/checkout/sucesso?order=MJ-20260729-0001",
+  "return_url": "https://equilibra.tech/checkout/sucesso?order=MJ-20260729-0001",
+  "notification_urls": [
+    "https://equilibra.tech/api/webhooks/pagseguro"
+  ],
+  "payment_notification_urls": [
+    "https://equilibra.tech/api/webhooks/pagseguro"
+  ]
+}
+
+Notas:
+  - unit_amount e additional_amount estão em centavos (18990 = R$ 189,90).
+  - additional_amount = frete, quando houver.
+  - reference_id = número do pedido na loja.
+
+
+---------- RESPONSE 201 / 200 (sucesso — exemplo) ----------
+
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "CHEC_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+  "reference_id": "MJ-20260729-0001",
+  "status": "ACTIVE",
+  "expiration_date": "2026-07-29T21:00:00-03:00",
+  "created_at": "2026-07-29T19:00:00-03:00",
+  "customer": {
+    "name": "Maria da Silva",
+    "email": "maria.silva@email.com",
+    "tax_id": "12345678909"
+  },
+  "items": [
+    {
+      "reference_id": "item-1",
+      "name": "Conjunto Legging Majesté",
+      "quantity": 1,
+      "unit_amount": 18990
+    }
+  ],
+  "additional_amount": 1590,
+  "links": [
+    {
+      "rel": "PAY",
+      "href": "https://pagamento.pagseguro.uol.com.br/checkout/pagamento.jhtml?code=EXEMPLO",
+      "method": "GET"
+    },
+    {
+      "rel": "SELF",
+      "href": "https://sandbox.api.pagseguro.com/checkouts/CHEC_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+      "method": "GET"
+    }
+  ]
+}
+
+Comportamento na loja:
+  O sistema lê o link com rel "PAY" (ou "CHECKOUT") e redireciona o cliente
+  para essa URL para concluir o pagamento no ambiente PagBank.
+
+
+---------- RESPONSE 400 / 401 (erro — exemplos) ----------
+
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+{
+  "error_messages": [
+    {
+      "error": "invalid_authorization_header",
+      "description": "Invalid credential. Review AUTHORIZATION header."
+    }
+  ]
+}
+
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{
+  "error_messages": [
+    {
+      "code": "invalid_parameter",
+      "description": "items is required",
+      "parameter_name": "items"
+    }
+  ]
+}
+
+
+================================================================================
+2) WEBHOOK — notificação de pagamento / checkout
+================================================================================
+
+URL cadastrada na criação do checkout:
+  POST https://equilibra.tech/api/webhooks/pagseguro
+
+O PagBank envia notificações para essa URL quando há atualização de status
+do checkout e/ou do pagamento.
+
+
+---------- REQUEST (exemplo de payload recebido) ----------
+
+POST /api/webhooks/pagseguro HTTP/1.1
+Host: equilibra.tech
+Content-Type: application/json
+
+{
+  "id": "ORDE_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+  "reference_id": "MJ-20260729-0001",
+  "created_at": "2026-07-29T19:05:00-03:00",
+  "charges": [
+    {
+      "id": "CHAR_XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+      "status": "PAID",
+      "amount": {
+        "value": 20580,
+        "currency": "BRL"
+      },
+      "paid_at": "2026-07-29T19:05:12-03:00",
+      "payment_method": {
+        "type": "CREDIT_CARD"
+      }
+    }
+  ]
+}
+
+
+---------- RESPONSE do nosso webhook ----------
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "ok": true,
+  "service": "pagseguro-webhook"
+}
+
+
+================================================================================
+3) RETORNO DO CLIENTE À LOJA
+================================================================================
+
+Após pagar (ou cancelar) no Checkout PagBank, o cliente retorna para:
+
+  https://equilibra.tech/checkout/sucesso?order=MJ-20260729-0001
+
+A confirmação definitiva do pagamento é tratada via webhook (item 2).
+
+
+================================================================================
+4) ESCLARECIMENTO SOBRE O LINK DO FORMULÁRIO
+================================================================================
+
+O formulário cita a documentação:
+  https://dev.pagbank.uol.com.br/reference/criar-pagar-pedido-com-cartao
+
+Essa API (Orders + charge com cartão transparente no site do lojista) NÃO é
+a utilizada nesta integração.
+
+A Majesté utiliza o Checkout PagBank hospedado (POST /checkouts), em que:
+  - o cartão é digitado na página do PagBank;
+  - a loja não captura, armazena nem tokeniza dados de cartão;
+  - meios aceitos na página PagBank: cartão de crédito e Pix (conforme
+    disponibilidade da conta).
+
+Portanto, os requests/responses relevantes para homologação desta integração
+são os do endpoint POST /checkouts e do webhook acima.
+
+
+================================================================================
+5) CHECKLIST PARA O ANALISTA PAGBANK
+================================================================================
+
+[x] Autenticação Bearer com token do Vendedor
+[x] Criação de checkout com itens, cliente, frete (additional_amount)
+[x] redirect_url / return_url apontando para a loja
+[x] notification_urls e payment_notification_urls configuradas
+[x] Cliente redirecionado ao link PAY retornado pela API
+[x] Webhook responde HTTP 200
+[x] Sem captura de dados de cartão no site da loja
+
+
+Documento gerado para anexo no formulário de homologação PagBank.
+Data: 29/07/2026
+================================================================================

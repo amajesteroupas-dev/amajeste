@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 18" role="img" aria-label="Reclame Aqui">
+  <!-- Wordmark tipográfico fiel às cores da marca (lime + verde escuro) -->
+  <text
+    x="0"
+    y="14"
+    font-family="Arial, Helvetica, 'Segoe UI', sans-serif"
+    font-size="14"
+    font-weight="700"
+    font-style="italic"
+    letter-spacing="-0.02em"
+  >
+    <tspan fill="#8BC34A">Reclame</tspan><tspan fill="#1B5E20" font-style="normal" font-weight="800" letter-spacing="0.01em">AQUI</tspan>
+  </text>
+</svg>

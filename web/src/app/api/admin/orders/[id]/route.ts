@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { adminAuth } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { CashEntryType, OrderStatus } from "@prisma/client";
+import { notifyOrderShipped } from "@/lib/order-notify";
+import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
+import { releaseOrderStockHold } from "@/lib/order-stock-reserve";
+import {
+  actorFromSession,
+  requestIp,
+  writeAuditLog,
+} from "@/lib/audit-log";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Props) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "STAFF")) {
+  const session = await adminAuth();
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "STAFF")
+  ) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
   const { id } = await params;
   const body = await req.json();
   const status = body.status as OrderStatus;
+  const notifyCustomer = body.notifyCustomer !== false;
+
+  const previous = await prisma.order.findUnique({ where: { id } });
 
   const order = await prisma.order.update({
     where: { id },
@@ -22,6 +36,16 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       trackingCode: body.trackingCode || null,
     },
   });
+
+  // Cancelar no admin deve devolver estoque ainda reservado
+  if (
+    status === "CANCELLED" &&
+    previous &&
+    previous.status !== "CANCELLED" &&
+    previous.stockHeld
+  ) {
+    await releaseOrderStockHold(id, "Pedido cancelado no admin");
+  }
 
   if (status === "SHIPPED") {
     await prisma.shipment.upsert({
@@ -57,7 +81,37 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       where: { orderId: id },
       data: { status: "APPROVED", paidAt: new Date() },
     });
+    if (previous?.status !== "PAID" && status === "PAID") {
+      void onOrderPaidSideEffects(id);
+    }
   }
 
-  return NextResponse.json(order);
+  let notify = null;
+  const becameShipped =
+    status === "SHIPPED" && previous?.status !== "SHIPPED";
+  const trackingChanged =
+    status === "SHIPPED" &&
+    Boolean(body.trackingCode) &&
+    body.trackingCode !== previous?.trackingCode;
+
+  if (notifyCustomer && (becameShipped || trackingChanged)) {
+    notify = await notifyOrderShipped(id);
+  }
+
+  void writeAuditLog({
+    category: "orders",
+    action: "update",
+    summary: `Pedido ${order.orderNumber}: ${previous?.status || "?"} → ${status}`,
+    entityType: "Order",
+    entityId: order.id,
+    detail: {
+      from: previous?.status,
+      to: status,
+      trackingCode: body.trackingCode || null,
+    },
+    actor: actorFromSession(session),
+    ip: requestIp(req),
+  });
+
+  return NextResponse.json({ ...order, notify });
 }

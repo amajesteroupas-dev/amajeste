@@ -1,0 +1,419 @@
+================================================================================
+Majesté Fitness — Integração PagBank
+API: Pedidos e Pagamentos (Orders)
+Meios de pagamento a validar: PIX (qr_codes) + Cartão de crédito (CREDIT_CARD)
+Ambiente: Sandbox — https://sandbox.api.pagseguro.com
+Loja: https://amajeste.com.br
+Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+Observação: checkout transparente no próprio domínio. NÃO utilizamos
+Divisão de Pagamentos / split.
+================================================================================
+
+
+################################################################################
+# 1) CARTÃO DE CRÉDITO — POST /orders
+#    payment_method.type = CREDIT_CARD (cartão criptografado via encryptCard)
+################################################################################
+
+--------------------------------------------------------------------------------
+REQUEST
+--------------------------------------------------------------------------------
+POST https://sandbox.api.pagseguro.com/orders
+
+Headers:
+  Authorization: Bearer {{TOKEN}}
+  Content-Type: application/json
+  Accept: application/json
+
+Body:
+{
+    "reference_id": "MAJ-ORD-CARD-0001",
+    "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+            {
+                "country": "55",
+                "area": "11",
+                "number": "999999999",
+                "type": "MOBILE"
+            }
+        ]
+    },
+    "items": [
+        {
+            "reference_id": "item-1",
+            "name": "Macacao Isa - Majeste Fitness",
+            "quantity": 1,
+            "unit_amount": 500
+        }
+    ],
+    "shipping": {
+        "address": {
+            "street": "Avenida Brigadeiro Faria Lima",
+            "number": "1384",
+            "complement": "apto 12",
+            "locality": "Pinheiros",
+            "city": "São Paulo",
+            "region_code": "SP",
+            "country": "BRA",
+            "postal_code": "01452002"
+        }
+    },
+    "notification_urls": [
+        "https://amajeste.com.br/api/webhooks/pagseguro"
+    ],
+    "charges": [
+        {
+            "reference_id": "MAJ-ORD-CARD-0001-CHG",
+            "description": "Pedido Majeste Fitness",
+            "amount": {
+                "value": 500,
+                "currency": "BRL"
+            },
+            "payment_method": {
+                "type": "CREDIT_CARD",
+                "installments": 1,
+                "capture": true,
+                "card": {
+                    "encrypted": "mKSnk0i1JaDw69Ino8AMABWIBCS9e1tfvt0K69xx38bOvaX46MGV/PkS6yzODk64CZ/SPuqqD7hV459NiR0+QnkA9zOiXYUdLCUChS5MadbqfZvzu6J8dfkizvfN2oYODflZa0+UmOPn35J8gQwSZq+QWZdYX5+Jqm0Ve2gYB9XBIEb1CPBt3ghvSNU7bBhwafxZUZpBffQc5UOYChhH75EF5MWjk0rQOCV9xU2TCjoRpQfVph/Jg2H20KtZ+FNOgEkH/WBnHbH0/rghpp7J/MHnGSaXnkMCnE44vpFt+gSge5WIgT9lQTz7XkrThPsS5WEmeMVuE+eslLeRtI1HKg==",
+                    "store": false,
+                    "holder": {
+                        "name": "Jose da Silva",
+                        "tax_id": "65544332211"
+                    }
+                }
+            }
+        }
+    ]
+}
+
+--------------------------------------------------------------------------------
+RESPONSE
+--------------------------------------------------------------------------------
+HTTP Status: 201 Created
+
+Body:
+{
+    "id": "ORDE_7D7ECFD2-A5EB-4A1C-91E1-347CE1FB7B4D",
+    "reference_id": "MAJ-ORD-CARD-0001",
+    "created_at": "2026-08-05T14:01:37.791-03:00",
+    "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+            {
+                "type": "MOBILE",
+                "country": "55",
+                "area": "11",
+                "number": "999999999"
+            }
+        ]
+    },
+    "items": [
+        {
+            "reference_id": "item-1",
+            "name": "Macacao Isa - Majeste Fitness",
+            "quantity": 1,
+            "unit_amount": 500
+        }
+    ],
+    "shipping": {
+        "address": {
+            "street": "Avenida Brigadeiro Faria Lima",
+            "number": "1384",
+            "complement": "apto 12",
+            "locality": "Pinheiros",
+            "city": "São Paulo",
+            "region_code": "SP",
+            "country": "BRA",
+            "postal_code": "01452002"
+        }
+    },
+    "charges": [
+        {
+            "id": "CHAR_09F6DEBA-ABA7-4C76-B520-8E346B7CB4D3",
+            "reference_id": "MAJ-ORD-CARD-0001-CHG",
+            "status": "PAID",
+            "created_at": "2026-08-05T14:01:37.918-03:00",
+            "paid_at": "2026-08-05T14:01:39.000-03:00",
+            "description": "Pedido Majeste Fitness",
+            "amount": {
+                "value": 500,
+                "currency": "BRL",
+                "summary": {
+                    "total": 500,
+                    "paid": 500,
+                    "refunded": 0
+                }
+            },
+            "payment_response": {
+                "code": "20000",
+                "message": "SUCESSO",
+                "reference": "032416400102",
+                "raw_data": {
+                    "authorization_code": "145803",
+                    "nsu": "032416400102",
+                    "reason_code": "00"
+                }
+            },
+            "payment_method": {
+                "type": "CREDIT_CARD",
+                "installments": 1,
+                "capture": true,
+                "card": {
+                    "id": "CARD_2540044F-EA6A-4DEF-BC9B-12D50E4E1C04",
+                    "brand": "mastercard",
+                    "first_digits": "524008",
+                    "last_digits": "2454",
+                    "exp_month": "12",
+                    "exp_year": "2030",
+                    "holder": {
+                        "name": "Jose da Silva"
+                    },
+                    "store": false
+                },
+                "soft_descriptor": "MajesteFitness"
+            },
+            "links": [
+                {
+                    "rel": "SELF",
+                    "href": "https://sandbox.api.pagseguro.com/charges/CHAR_09F6DEBA-ABA7-4C76-B520-8E346B7CB4D3",
+                    "media": "application/json",
+                    "type": "GET"
+                },
+                {
+                    "rel": "CHARGE.CANCEL",
+                    "href": "https://sandbox.api.pagseguro.com/charges/CHAR_09F6DEBA-ABA7-4C76-B520-8E346B7CB4D3/cancel",
+                    "media": "application/json",
+                    "type": "POST"
+                }
+            ]
+        }
+    ],
+    "notification_urls": [
+        "https://amajeste.com.br/api/webhooks/pagseguro"
+    ],
+    "links": [
+        {
+            "rel": "SELF",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_7D7ECFD2-A5EB-4A1C-91E1-347CE1FB7B4D",
+            "media": "application/json",
+            "type": "GET"
+        },
+        {
+            "rel": "PAY",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_7D7ECFD2-A5EB-4A1C-91E1-347CE1FB7B4D/pay",
+            "media": "application/json",
+            "type": "POST"
+        }
+    ]
+}
+
+
+################################################################################
+# 2) PIX — POST /orders
+#    qr_codes (QR Code Pix gerado no checkout do site)
+################################################################################
+
+--------------------------------------------------------------------------------
+REQUEST
+--------------------------------------------------------------------------------
+POST https://sandbox.api.pagseguro.com/orders
+
+Headers:
+  Authorization: Bearer {{TOKEN}}
+  Content-Type: application/json
+  Accept: application/json
+
+Body:
+{
+    "reference_id": "MAJ-ORD-PIX-0001",
+    "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+            {
+                "country": "55",
+                "area": "11",
+                "number": "999999999",
+                "type": "MOBILE"
+            }
+        ]
+    },
+    "items": [
+        {
+            "reference_id": "item-1",
+            "name": "Macacao Isa - Majeste Fitness",
+            "quantity": 1,
+            "unit_amount": 500
+        }
+    ],
+    "qr_codes": [
+        {
+            "amount": {
+                "value": 500
+            },
+            "expiration_date": "2026-08-05T16:01:37-03:00"
+        }
+    ],
+    "shipping": {
+        "address": {
+            "street": "Avenida Brigadeiro Faria Lima",
+            "number": "1384",
+            "complement": "apto 12",
+            "locality": "Pinheiros",
+            "city": "São Paulo",
+            "region_code": "SP",
+            "country": "BRA",
+            "postal_code": "01452002"
+        }
+    },
+    "notification_urls": [
+        "https://amajeste.com.br/api/webhooks/pagseguro"
+    ]
+}
+
+--------------------------------------------------------------------------------
+RESPONSE
+--------------------------------------------------------------------------------
+HTTP Status: 201 Created
+
+Body:
+{
+    "id": "ORDE_2B1C9E44-77A2-4F0E-9B3D-5A6E7C8D9F10",
+    "reference_id": "MAJ-ORD-PIX-0001",
+    "created_at": "2026-08-05T14:01:37.791-03:00",
+    "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+            {
+                "type": "MOBILE",
+                "country": "55",
+                "area": "11",
+                "number": "999999999"
+            }
+        ]
+    },
+    "items": [
+        {
+            "reference_id": "item-1",
+            "name": "Macacao Isa - Majeste Fitness",
+            "quantity": 1,
+            "unit_amount": 500
+        }
+    ],
+    "qr_codes": [
+        {
+            "id": "QRCO_3F2E1D0C-9B8A-7C6D-5E4F-3A2B1C0D9E8F",
+            "expiration_date": "2026-08-05T16:01:37-03:00",
+            "amount": {
+                "value": 500
+            },
+            "text": "00020101021226770014BR.GOV.BCB.PIX2555api.pagseguro.com/pix/v2/8A6F0E1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B5204000053039865802BR5920Majeste Fitness6009SAO PAULO62070503***63041D3D",
+            "arrangements": [
+                "PAGBANK",
+                "PIX"
+            ],
+            "links": [
+                {
+                    "rel": "QRCODE.PNG",
+                    "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_3F2E1D0C-9B8A-7C6D-5E4F-3A2B1C0D9E8F/png",
+                    "media": "image/png",
+                    "type": "GET"
+                },
+                {
+                    "rel": "QRCODE.BASE64",
+                    "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_3F2E1D0C-9B8A-7C6D-5E4F-3A2B1C0D9E8F/base64",
+                    "media": "text/plain",
+                    "type": "GET"
+                }
+            ]
+        }
+    ],
+    "shipping": {
+        "address": {
+            "street": "Avenida Brigadeiro Faria Lima",
+            "number": "1384",
+            "complement": "apto 12",
+            "locality": "Pinheiros",
+            "city": "São Paulo",
+            "region_code": "SP",
+            "country": "BRA",
+            "postal_code": "01452002"
+        }
+    },
+    "notification_urls": [
+        "https://amajeste.com.br/api/webhooks/pagseguro"
+    ],
+    "links": [
+        {
+            "rel": "SELF",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_2B1C9E44-77A2-4F0E-9B3D-5A6E7C8D9F10",
+            "media": "application/json",
+            "type": "GET"
+        }
+    ]
+}
+
+
+################################################################################
+# 3) NOTIFICAÇÃO / WEBHOOK — POST recebido em notification_urls
+#    Confirmação de pagamento (PIX pago / cartão PAID)
+################################################################################
+
+--------------------------------------------------------------------------------
+REQUEST (PagBank -> nossa loja)
+--------------------------------------------------------------------------------
+POST https://amajeste.com.br/api/webhooks/pagseguro
+
+Headers:
+  Content-Type: application/json
+
+Body:
+{
+    "id": "ORDE_2B1C9E44-77A2-4F0E-9B3D-5A6E7C8D9F10",
+    "reference_id": "MAJ-ORD-PIX-0001",
+    "charges": [
+        {
+            "id": "CHAR_5D4C3B2A-1E0F-4A9B-8C7D-6E5F4A3B2C1D",
+            "status": "PAID",
+            "paid_at": "2026-08-05T14:05:12.000-03:00",
+            "amount": {
+                "value": 500,
+                "currency": "BRL",
+                "summary": {
+                    "total": 500,
+                    "paid": 500,
+                    "refunded": 0
+                }
+            }
+        }
+    ]
+}
+
+--------------------------------------------------------------------------------
+RESPONSE (nossa loja -> PagBank)
+--------------------------------------------------------------------------------
+HTTP Status: 200 OK
+
+Body:
+{
+    "ok": true
+}
+
+
+================================================================================
+RESUMO
+================================================================================
+- API de Pedidos e Pagamentos (Orders): POST /orders
+- Cartão de crédito: payment_method.type = CREDIT_CARD, card.encrypted (encryptCard)
+- PIX: qr_codes (QR Code exibido no checkout do site)
+- Notificação de pagamento via notification_urls (webhook)
+- Sem Divisão de Pagamentos / split
+================================================================================

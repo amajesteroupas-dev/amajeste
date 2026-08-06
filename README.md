@@ -2,13 +2,30 @@
 
 Loja de moda fitness feminina com vitrine rápida (Next.js), imagens otimizadas (Sharp → WebP/AVIF), checkout Mercado Pago + Melhor Envio, e painel admin completo (estoque, pedidos, CRM, reclamações, financeiro).
 
+## App mobile (Expo) — só local por enquanto
+
+Pasta [`mobile/`](mobile/). Não publicar nas lojas ainda.
+
+```bash
+# terminal 1 — API/site
+cd web && npm run dev
+
+# terminal 2 — app
+cd mobile
+cp .env.example .env
+npm install
+npm start
+```
+
+Detalhes: [`mobile/README.md`](mobile/README.md).
+
 ## Stack
 
-- Next.js 15 (App Router)
+- Next.js 15 (App Router) + Expo (React Native)
 - PostgreSQL 16 + Prisma
-- NextAuth (admin)
+- NextAuth (admin) + JWT Bearer (app)
 - Mercado Pago (Pix / cartão)
-- Melhor Envio (frete)
+- Melhor Envio / Manda Bem (frete)
 - Docker Compose + Nginx (Hostinger KVM 4)
 
 ## Desenvolvimento local

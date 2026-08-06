@@ -1,11 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getPayment } from "@/lib/payments";
 import { CashEntryType, OrderStatus, PaymentStatus } from "@prisma/client";
+import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
+import {
+  commitOrderStockHold,
+  releaseOrderStockHold,
+  reservationDeadline,
+} from "@/lib/order-stock-reserve";
+
+function verifyMercadoPagoSignature(req: NextRequest, body: unknown): boolean {
+  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();
+  // Sem secret em produção: rejeita (evita webhook forjado)
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[MP webhook] MERCADOPAGO_WEBHOOK_SECRET obrigatório em produção"
+      );
+      return false;
+    }
+    return true;
+  }
+
+  const xSignature = req.headers.get("x-signature") || "";
+  const xRequestId = req.headers.get("x-request-id") || "";
+  if (!xSignature) return false;
+
+  const parts = Object.fromEntries(
+    xSignature.split(",").map((p) => {
+      const [k, v] = p.split("=");
+      return [k?.trim(), v?.trim()];
+    })
+  ) as Record<string, string>;
+
+  const ts = parts.ts;
+  const v1 = parts.v1;
+  if (!ts || !v1) return false;
+
+  const dataId =
+    (body as { data?: { id?: string | number } })?.data?.id ??
+    (body as { id?: string | number })?.id ??
+    "";
+  const dataIdStr = String(dataId);
+
+  const manifest = `id:${dataIdStr};request-id:${xRequestId};ts:${ts};`;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(manifest)
+    .digest("hex");
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expected, "hex"),
+      Buffer.from(v1, "hex")
+    );
+  } catch {
+    return expected === v1;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    if (!verifyMercadoPagoSignature(req, body)) {
+      return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+    }
+
     const paymentId = String(body.data?.id || body.id || "");
     if (!paymentId) {
       return NextResponse.json({ ok: true });
@@ -34,13 +96,17 @@ export async function POST(req: NextRequest) {
 
     let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
     let orderStatus: OrderStatus = payment.order.status;
+    /** Rejeição no gateway: pedido continua PENDING p/ cliente tentar de novo */
+    let paymentFailedKeepOrder = false;
 
     if (status === "approved") {
       paymentStatus = PaymentStatus.APPROVED;
       orderStatus = OrderStatus.PAID;
     } else if (status === "rejected" || status === "cancelled") {
       paymentStatus = PaymentStatus.REJECTED;
-      orderStatus = OrderStatus.CANCELLED;
+      paymentFailedKeepOrder = true;
+      // Não cancela o pedido — cliente pode pagar de novo na mesma compra
+      orderStatus = OrderStatus.PENDING;
     } else if (status === "refunded") {
       paymentStatus = PaymentStatus.REFUNDED;
       orderStatus = OrderStatus.REFUNDED;
@@ -57,7 +123,16 @@ export async function POST(req: NextRequest) {
       });
       await tx.order.update({
         where: { id: payment.orderId },
-        data: { status: orderStatus },
+        data: {
+          status: orderStatus,
+          ...(paymentStatus === PaymentStatus.APPROVED
+            ? { reservedUntil: null }
+            : {}),
+          // Renova janela de reserva para nova tentativa de pagamento
+          ...(paymentFailedKeepOrder && payment.order.stockHeld
+            ? { reservedUntil: reservationDeadline() }
+            : {}),
+        },
       });
 
       if (paymentStatus === PaymentStatus.APPROVED) {
@@ -76,11 +151,28 @@ export async function POST(req: NextRequest) {
           });
         }
       }
+
+      // Só devolve estoque em reembolso (venda já paga desfeita)
+      if (orderStatus === OrderStatus.REFUNDED && payment.order.stockHeld) {
+        await releaseOrderStockHold(
+          payment.orderId,
+          "Estoque devolvido (reembolso)",
+          tx
+        );
+      }
     });
 
+    if (
+      paymentStatus === PaymentStatus.APPROVED &&
+      payment.status !== PaymentStatus.APPROVED
+    ) {
+      await commitOrderStockHold(payment.orderId);
+      void onOrderPaidSideEffects(payment.orderId);
+    }
+
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "webhook error" }, { status: 500 });
+  } catch (e) {
+    console.error("MP webhook error", e);
+    return NextResponse.json({ error: "webhook" }, { status: 500 });
   }
 }

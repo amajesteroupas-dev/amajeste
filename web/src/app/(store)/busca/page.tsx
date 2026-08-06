@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/store/ProductCard";
+import { buildProductCardProps } from "@/lib/product-card";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,17 @@ export default async function SearchPage({ searchParams }: Props) {
     ? await prisma.product.findMany({
         where: {
           active: true,
+          deletedAt: null,
           OR: [
             { name: { contains: query, mode: "insensitive" } },
             { description: { contains: query, mode: "insensitive" } },
           ],
         },
-        include: { images: { take: 1, orderBy: { sortOrder: "asc" } } },
+        include: {
+          images: { take: 6, orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true } },
+          category: { select: { id: true, parentId: true, priceAdjustPercent: true } },
+        },
         take: 24,
       })
     : [];
@@ -31,15 +37,9 @@ export default async function SearchPage({ searchParams }: Props) {
       <p className="text-muted mb-8 text-sm">
         {query ? `Resultados para “${query}”` : "Digite um termo na busca."}
       </p>
-      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
         {products.map((p) => (
-          <ProductCard
-            key={p.id}
-            name={p.name}
-            slug={p.slug}
-            price={p.price.toString()}
-            imageUrl={p.images[0]?.url}
-          />
+          <ProductCard key={p.id} {...buildProductCardProps(p)} />
         ))}
       </div>
     </div>

@@ -8,6 +8,6 @@
   <rect width="800" height="1000" fill="url(#g)"/>
   <circle cx="620" cy="280" r="180" fill="#e8b9a4" opacity="0.45"/>
   <circle cx="180" cy="720" r="220" fill="#c4a35a" opacity="0.18"/>
-  <text x="400" y="480" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#1a1a1a">Majesté</text>
-  <text x="400" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6b6560" letter-spacing="4">VISTA SUA FORÇA</text>
+  <text x="400" y="480" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#1a1a1a">MajestÃ©</text>
+  <text x="400" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6b6560" letter-spacing="4">VISTA SUA FORÃ‡A</text>
 </svg>

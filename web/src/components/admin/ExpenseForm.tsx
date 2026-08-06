@@ -20,14 +20,42 @@ export function ExpenseForm() {
         paid: form.get("paid") === "on",
       }),
     });
+    (e.target as HTMLFormElement).reset();
     router.refresh();
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-5 border border-line bg-surface p-5">
-      <input name="description" required placeholder="Despesa" className="input md:col-span-2" />
-      <input name="amount" type="number" step="0.01" required placeholder="Valor" className="input" />
-      <input name="category" required placeholder="Categoria" className="input" defaultValue="Operacional" />
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-3 md:grid-cols-5 border border-line bg-surface p-5"
+    >
+      <p className="md:col-span-5 text-sm text-muted">
+        Despesas manuais (aluguel, marketing, etc.). Compras de produto entram
+        automaticamente pelo <strong>Estoque → Entrada</strong>.
+      </p>
+      <input
+        name="description"
+        required
+        placeholder="Despesa"
+        className="input md:col-span-2"
+      />
+      <input
+        name="amount"
+        type="number"
+        step="0.01"
+        required
+        placeholder="Valor"
+        className="input"
+      />
+      <select name="category" required className="input" defaultValue="Operacional">
+        <option value="Operacional">Operacional</option>
+        <option value="Marketing">Marketing</option>
+        <option value="Salários">Salários</option>
+        <option value="Impostos">Impostos</option>
+        <option value="Frete">Frete</option>
+        <option value="Compra de mercadoria">Compra de mercadoria</option>
+        <option value="Geral">Geral</option>
+      </select>
       <input name="dueDate" type="date" className="input" />
       <label className="flex items-center gap-2 text-sm">
         <input name="paid" type="checkbox" /> Já paga

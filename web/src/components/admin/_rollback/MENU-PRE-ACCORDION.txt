@@ -1,0 +1,30 @@
+ROLLBACK do menu lateral (pré-accordion) — 2026-07-30
+
+Para reverter: restaurar o layout flat antigo em
+src/app/(admin)/admin/(panel)/layout.tsx (lista LINKS + <aside> simples)
+e remover src/components/admin/AdminSidebar.tsx.
+
+Rotas preservadas (não alteradas nesta feature):
+/admin
+/admin/banners
+/admin/midias
+/admin/banco-videos
+/admin/stories
+/admin/instagram
+/admin/email-marketing
+/admin/produtos
+/admin/videos
+/admin/categorias
+/admin/produtos/lixeira
+/admin/estoque
+/admin/avisos
+/admin/pedidos
+/admin/frete
+/admin/manda-bem
+/admin/pagamentos
+/admin/clientes
+/admin/reclamacoes
+/admin/avaliacoes
+/admin/looks
+/admin/planejamento
+/admin/financeiro

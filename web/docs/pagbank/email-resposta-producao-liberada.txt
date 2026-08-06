@@ -1,0 +1,24 @@
+Olá! Tudo bem?
+
+Confirmamos o recebimento da liberação da API Orders em produção.
+
+Em anexo seguem os logs reais de teste em produção (request + response) da
+API de Pedidos e Pagamentos (Orders), com os meios que utilizamos:
+
+1) PIX — POST /orders com qr_codes (QR Code exibido na própria loja)
+2) Cartão de crédito — POST /orders com payment_method.type = CREDIT_CARD
+   e card.encrypted (SDK encryptCard + chave pública de produção)
+
+A integração é checkout transparente em https://amajeste.com.br:
+cartão e Pix separados, sem redirecionar o cliente para página hospedada
+do PagBank e sem divisão de pagamentos/split.
+
+Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+
+Chave Pix cadastrada na conta e chave pública gerada via
+POST https://api.pagseguro.com/public-keys (ambiente de produção).
+
+Ficamos no aguardo da validação final.
+
+Atenciosamente,
+Equipe Majesté Fitness

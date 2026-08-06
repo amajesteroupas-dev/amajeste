@@ -1,109 +1,187 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/store/ProductCard";
+import { BannerCarousel } from "@/components/store/BannerCarousel";
+import { BrandSectionMark } from "@/components/store/BrandLogo";
+import { NewsletterForm } from "@/components/store/NewsletterForm";
+import { parseCutoutLayers } from "@/lib/cutout-layout";
+import { buildProductCardProps } from "@/lib/product-card";
 
 export const dynamic = "force-dynamic";
 
+const FALLBACK_HERO = [
+  { src: "/brand/hero-photo-1.jpg", label: "Performance" },
+  { src: "/brand/hero-photo-2.jpg", label: "Presença" },
+  { src: "/brand/hero-photo-3.jpg", label: "Conforto" },
+];
+
 export default async function HomePage() {
-  const [featured, categories] = await Promise.all([
+  const productInclude = {
+    images: { orderBy: { sortOrder: "asc" as const }, take: 6 },
+    variants: { where: { active: true } },
+    category: { select: { id: true, parentId: true, priceAdjustPercent: true } },
+  };
+
+  const [majeste, destaques, categories, banners] = await Promise.all([
     prisma.product.findMany({
-      where: { active: true, featured: true },
-      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      where: { active: true, featured: true, deletedAt: null },
+      include: productInclude,
       take: 8,
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.product.findMany({
+      where: { active: true, destaque: true, deletedAt: null },
+      include: productInclude,
+      take: 12,
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.category.findMany({
+      where: {
+        parentId: null,
+        slug: { not: "pagina-principal" },
+      },
+      orderBy: { sortOrder: "asc" },
+    }),
+    prisma.banner.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    }),
   ]);
 
+  function cardProps(
+    p: (typeof majeste)[number] | (typeof destaques)[number]
+  ) {
+    return buildProductCardProps(p);
+  }
   return (
     <>
-      <section className="relative min-h-[88vh] overflow-hidden bg-[#efe8df]">
-        <div
-          className="absolute inset-0 opacity-90"
-          style={{
-            background:
-              "radial-gradient(circle at 75% 40%, #f0c9b5 0%, transparent 42%), radial-gradient(circle at 20% 80%, #e8d5c4 0%, transparent 35%), linear-gradient(135deg, #f7f1ea, #ebe0d4)",
-          }}
-        />
-        <div className="container-maj relative grid min-h-[88vh] items-center gap-10 py-16 lg:grid-cols-2">
-          <div className="hero-animate max-w-xl">
-            <p className="mb-3 text-xs uppercase tracking-[0.28em] text-gold-dark">
-              Coleção fitness
-            </p>
-            <h1
-              className="text-6xl leading-[0.95] md:text-7xl text-ink"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Majesté
-            </h1>
-            <p className="mt-2 text-3xl md:text-4xl text-ink/80" style={{ fontFamily: "var(--font-display)" }}>
-              Vista sua força
-            </p>
-            <p className="mt-5 max-w-md text-base text-muted leading-relaxed hero-animate-delay">
-              Modelagens que unem conforto, desempenho e feminilidade em cada
-              movimento.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/categoria/conjunto-legging" className="btn btn-primary">
-                Comprar agora
-              </Link>
-              <Link href="/categoria/outlet" className="btn btn-outline">
-                Ver outlet
-              </Link>
+      {banners.length > 0 ? (
+        <Suspense fallback={null}>
+          <BannerCarousel
+            banners={banners.map((b) => ({
+              id: b.id,
+              title: b.title,
+              subtitle: b.subtitle,
+              ctaLabel: b.ctaLabel,
+              ctaHref: b.ctaHref,
+              imageUrl: b.imageUrl,
+              textAlign: b.textAlign,
+              overlay: b.overlay,
+              layout: b.layout,
+              bgColor: b.bgColor,
+              panelColor: b.panelColor,
+              highlight: b.highlight,
+              promoText: b.promoText,
+              couponCode: b.couponCode,
+              tagline: b.tagline,
+              bannerSize: b.bannerSize,
+              imageFit: b.imageFit,
+              focalX: b.focalX,
+              focalY: b.focalY,
+              imageZoom: b.imageZoom,
+              textStyle: b.textStyle as Record<string, unknown> | null,
+              cutoutImages: parseCutoutLayers(b.cutoutImages),
+              videoUrl: b.videoUrl,
+              videoSeconds: b.videoSeconds,
+              videoPlaylist: b.videoPlaylist,
+              videoLayout: (b as { videoLayout?: string }).videoLayout,
+            }))}
+          />
+        </Suspense>
+      ) : (
+        <section className="hero-studio">
+          <div className="container-maj hero-studio-grid">
+            <div className="hero-studio-copy">
+              <p className="hero-kicker">Majesté</p>
+              <h1 className="hero-title">Vista sua força</h1>
+              <p className="hero-sub">
+                Modelagens que unem conforto, desempenho e feminilidade em cada
+                movimento.
+              </p>
+              <div className="hero-cta-wrap">
+                <Link
+                  href="/categoria/conjunto-legging"
+                  className="btn btn-primary"
+                >
+                  Comprar agora
+                </Link>
+              </div>
+            </div>
+            <div className="hero-studio-photos">
+              {FALLBACK_HERO.map((photo) => (
+                <figure key={photo.src} className="hero-studio-shot">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.src}
+                    alt=""
+                    width={720}
+                    height={1080}
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <figcaption>{photo.label}</figcaption>
+                </figure>
+              ))}
             </div>
           </div>
-          <div className="relative hidden lg:block hero-animate-delay">
-            <div className="aspect-[4/5] bg-[url('/hero-pattern.svg')] bg-cover bg-center shadow-2xl shadow-black/10" />
+        </section>
+      )}
+
+      <section className="bg-white py-14">
+        <div className="container-maj">
+          <BrandSectionMark title="Majesté" label="Coleção Majesté" className="mb-10" />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
+            {majeste.map((p) => (
+              <ProductCard key={p.id} {...cardProps(p)} />
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="container-maj py-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <h2
-            className="text-4xl"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Categorias
-          </h2>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/categoria/${cat.slug}`}
-              className="border border-line bg-surface px-3 py-6 text-center text-sm uppercase tracking-[0.1em] hover:border-gold hover:text-rose-dark transition-colors"
-            >
-              {cat.name}
-            </Link>
-          ))}
+      <section className="bg-cream py-12 border-y border-black/5">
+        <div className="container-maj">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+            {categories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/categoria/${cat.slug}`}
+                className="text-[0.72rem] uppercase tracking-[0.16em] text-[#333] hover:text-rose-dark transition-colors"
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="container-maj pb-20">
-        <h2
-          className="mb-8 text-4xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Mais vendidos
-        </h2>
-        <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-          {featured.map((p) => (
-            <ProductCard
-              key={p.id}
-              name={p.name}
-              slug={p.slug}
-              price={p.price.toString()}
-              compareAt={p.compareAt?.toString()}
-              imageUrl={p.images[0]?.url}
-            />
-          ))}
+      <section className="bg-white py-16">
+        <div className="container-maj">
+          <BrandSectionMark title="Destaques" className="mb-10" />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
+            {destaques.map((p) => (
+              <ProductCard key={`best-${p.id}`} {...cardProps(p)} />
+            ))}
+          </div>
+          {destaques.length === 0 && (
+            <p className="text-center text-muted">Nenhum produto cadastrado.</p>
+          )}
         </div>
-        {featured.length === 0 && (
-          <p className="text-muted">
-            Nenhum produto cadastrado ainda. Acesse o admin para começar.
+      </section>
+
+      <section className="bg-cream py-16">
+        <div className="container-maj max-w-xl text-center">
+          <h3
+            className="text-3xl mb-3 text-[#3a2f28]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Inscreva-se para receber ofertas
+          </h3>
+          <p className="text-sm text-muted mb-6">
+            Novidades, lançamentos e condições especiais no seu e-mail.
           </p>
-        )}
+          <NewsletterForm />
+        </div>
       </section>
     </>
   );

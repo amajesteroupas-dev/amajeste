@@ -1,0 +1,18 @@
+Assunto: Evidência Sandbox — integração via API Checkouts (Majesté Fitness)
+
+Olá, tudo bem?
+
+Nossa integração com PagBank é via API Checkouts (checkout hospedado), não via Orders com cartão criptografado no site.
+
+Meios de pagamento utilizados no checkout PagBank:
+- Cartão de crédito
+- Pix
+
+Em anexo seguem os logs reais de Sandbox com request e response efetivos da criação do checkout (POST /checkouts), incluindo reference_id, itens, URLs de notificação e o link de pagamento retornado (HTTP 201, checkout CHEC_3AF0F542-24AA-4AC2-A8E2-784B9F002FE9).
+
+O fluxo é: o site cria o checkout → o cliente é redirecionado para a página hospedada do PagBank (link rel=PAY) → lá escolhe Cartão ou Pix. Por isso o formato Orders com encrypted CREDIT_CARD no site não se aplica a esta integração.
+
+Ficamos à disposição para qualquer ajuste na validação.
+
+Atenciosamente,
+Equipe Majesté Fitness

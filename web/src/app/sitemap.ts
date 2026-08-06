@@ -10,10 +10,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     [products, categories] = await Promise.all([
       prisma.product.findMany({
-        where: { active: true },
+        where: { active: true, deletedAt: null },
         select: { slug: true, updatedAt: true },
       }),
-      prisma.category.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.category.findMany({
+        where: { slug: { not: "pagina-principal" } },
+        select: { slug: true, updatedAt: true },
+      }),
     ]);
   } catch {
     // DB may be unavailable during build
@@ -22,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: base, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${base}/contato`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${base}/looks`, changeFrequency: "daily", priority: 0.7 },
     { url: `${base}/politicas-de-troca`, changeFrequency: "yearly", priority: 0.3 },
     ...categories.map((c) => ({
       url: `${base}/categoria/${c.slug}`,

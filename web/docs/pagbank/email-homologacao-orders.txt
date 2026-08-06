@@ -1,0 +1,25 @@
+Assunto: Homologação API Orders — cobrança transparente no site (Majesté Fitness)
+
+Olá, equipe PagBank,
+
+Solicitamos a homologação / liberação em allowlist da nossa conta vendedora para uso em produção da API de Pedidos (Orders), com cobrança transparente no próprio site (cartão criptografado + Pix), sem redirecionar para a página hospedada do PagBank.
+
+Contexto técnico:
+- Ambiente: Produção (https://api.pagseguro.com)
+- Token: gerado em PagBank → Venda online → Integrações (autenticação Bearer OK)
+- Confirmado: GET /public-keys/card e POST /public-keys retornam 200
+- Bloqueio atual: POST /orders retorna HTTP 403
+  {"error_messages":[{"description":"whitelist access required. Contact PagSeguro"}]}
+
+Integração própria (não marketplace):
+- Cartão: SDK PagBank encryptCard + POST /orders com payment_method.type = CREDIT_CARD
+- Pix: POST /orders com qr_codes
+- Notificações: https://amajeste.com.br/api/webhooks/pagseguro
+
+Já utilizamos com sucesso a API de Checkouts (página hospedada). Agora precisamos da liberação da API Orders para manter o cliente no site, no mesmo modelo do checkout transparente.
+
+Agradecemos a análise e a inclusão da conta na allowlist de produção para Orders.
+
+Atenciosamente,
+Majesté Fitness
+'@

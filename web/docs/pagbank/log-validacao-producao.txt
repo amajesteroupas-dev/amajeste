@@ -1,0 +1,115 @@
+================================================================
+LOG DE VALIDAÇÃO — PagBank API Produção
+Loja: Majesté Fitness | Site: https://amajeste.com.br
+Aplicação Connect: majeste-fitness
+Data/hora (UTC): 2026-08-03T01:15:35.820Z
+Ambiente API: https://api.pagseguro.com
+Token: gerado em Vendas > Plataformas e Checkout > Integrações (produção)
+================================================================
+
+1) CREDENCIAIS (mascaradas — token NÃO enviado em texto claro)
+----------------------------------------------------------------
+payPsEnabled: true
+payPsSandbox: false (produção)
+Token Integrações (Bearer): 8e475b…dc46 (len=100)
+Chave pública cartão: presente (RSA, len=392)
+Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+
+2) TESTE A — GET /public-keys/card
+----------------------------------------------------------------
+HTTP 200 (196 ms)
+public_key presente: true
+Resultado: OK
+
+3) TESTE B — POST /public-keys { "type": "card" }
+----------------------------------------------------------------
+HTTP 200 (75 ms)
+Resultado: OK
+
+4) TESTE C — POST /orders (Pix transparente R$ 1,00)  ★ crítico
+----------------------------------------------------------------
+Request:
+{
+  "reference_id": "valid-1785719735820",
+  "customer": {
+    "name": "Validacao Homologacao Majeste",
+    "email": "validacao@amajeste.com.br",
+    "tax_id": "39053344705"
+  },
+  "items": [
+    {
+      "reference_id": "item-validacao",
+      "name": "Teste homologacao API Orders",
+      "quantity": 1,
+      "unit_amount": 100
+    }
+  ],
+  "qr_codes": [
+    {
+      "amount": { "value": 100 },
+      "expiration_date": "2026-08-03T03:15:36.091Z"
+    }
+  ],
+  "notification_urls": [
+    "https://amajeste.com.br/api/webhooks/pagseguro"
+  ]
+}
+
+Response:
+HTTP 403 (46 ms)
+{
+  "error_messages": [
+    {
+      "code": "ACCESS_DENIED",
+      "description": "whitelist access required. Contact PagSeguro"
+    }
+  ]
+}
+
+order.id: (nenhum)
+qr_codes gerado: false
+Resultado: FALHA — API Orders ainda em whitelist / ACCESS_DENIED
+
+5) TESTE D — GET /orders/{id}
+----------------------------------------------------------------
+Pulado (pedido não criado no teste C)
+
+6) TESTE E — POST /checkouts (checkout hospedado — referência)
+----------------------------------------------------------------
+HTTP 201 (102 ms)
+Checkout criado:
+  id: CHEC_44FB5A97-33DA-41C6-9E95-2BE7E3158676
+  reference_id: valid-1785719735820-chk
+  status: ACTIVE
+  redirect_url / return_url: https://amajeste.com.br/checkout/sucesso
+  notification_urls: https://amajeste.com.br/api/webhooks/pagseguro
+Resultado: OK
+
+7) TESTE F — Webhook da loja GET https://amajeste.com.br/api/webhooks/pagseguro
+----------------------------------------------------------------
+HTTP 200 (47 ms)
+{"ok":true,"service":"pagseguro-webhook"}
+Resultado: OK
+
+8) RESUMO
+----------------------------------------------------------------
+A GET  /public-keys/card     OK (200)
+B POST /public-keys          OK (200)
+C POST /orders (Pix)         FALHA (403 ACCESS_DENIED — whitelist)
+E POST /checkouts            OK (201)
+F Webhook health             OK (200)
+
+Integração pretendida no site:
+- Checkout transparente no próprio domínio amajeste.com.br
+- Cartão: SDK encryptCard + POST /orders (CREDIT_CARD)
+- Pix: POST /orders com qr_codes
+- Notificações: https://amajeste.com.br/api/webhooks/pagseguro
+- Integração própria (não marketplace / sem split)
+
+Observação:
+O token de produção autentica com sucesso (public-keys e checkouts).
+A API de Pedidos (Orders) continua bloqueada com whitelist.
+Solicitamos a liberação definitiva da allowlist de POST /orders em produção
+para concluir a validação e manter o acesso à produção.
+
+Fim do log.

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { adminAuth } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import {
+  actorFromSession,
+  requestIp,
+  writeAuditLog,
+} from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const session = await adminAuth();
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "STAFF")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
@@ -31,6 +36,21 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  void writeAuditLog({
+    category: "finance",
+    action: "launch",
+    summary: `Despesa lançada: ${expense.description} (R$ ${Number(expense.amount).toFixed(2)})`,
+    entityType: "Expense",
+    entityId: expense.id,
+    detail: {
+      amount: expense.amount,
+      category: expense.category,
+      paid: expense.paid,
+    },
+    actor: actorFromSession(session),
+    ip: requestIp(req),
+  });
 
   return NextResponse.json(expense);
 }

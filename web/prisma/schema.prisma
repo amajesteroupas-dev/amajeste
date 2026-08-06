@@ -58,6 +58,12 @@ enum CashEntryType {
   EXPENSE
 }
 
+enum AdminTaskStatus {
+  TODO
+  DONE
+  CANCELLED
+}
+
 enum NoteChannel {
   PHONE
   WHATSAPP
@@ -78,36 +84,88 @@ model User {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String          @unique
   description String?
   imageUrl    String?
-  sortOrder   Int       @default(0)
+  sortOrder   Int             @default(0)
+  /// Ajuste de preço (%). Negativo reduz, positivo aumenta. Antes da promo do site.
+  priceAdjustPercent Float    @default(0)
+  /// Categoria pai (null = categoria raiz). Subcategorias têm 1 nível.
+  parentId    String?
+  parent      Category?       @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[]      @relation("CategoryTree")
   products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  videos      CategoryVideo[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([parentId])
+  @@index([sortOrder])
+}
+
+/// Vídeos do catálogo por categoria (ícone “Ao Vivo” sorteia daqui)
+model CategoryVideo {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  /// Upload /uploads/videos/... ou URL YouTube/Vimeo
+  url        String
+  title      String?
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([categoryId, active])
+  @@index([sortOrder])
 }
 
 model Product {
-  id          String           @id @default(cuid())
-  name        String
-  slug        String           @unique
-  description String
-  price       Decimal          @db.Decimal(10, 2)
-  costPrice   Decimal          @default(0) @db.Decimal(10, 2)
-  compareAt   Decimal?         @db.Decimal(10, 2)
-  featured    Boolean          @default(false)
-  active      Boolean          @default(true)
-  categoryId  String
-  category    Category         @relation(fields: [categoryId], references: [id])
-  images      ProductImage[]
-  variants    ProductVariant[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                   String           @id @default(cuid())
+  name                 String
+  slug                 String           @unique
+  description          String
+  price                Decimal          @db.Decimal(10, 2)
+  costPrice            Decimal          @default(0) @db.Decimal(10, 2)
+  compareAt            Decimal?         @db.Decimal(10, 2)
+  featured             Boolean          @default(false)
+  /// Exibir na seção “Destaques” da home
+  destaque             Boolean          @default(false)
+  active               Boolean          @default(true)
+  /// Quando preenchido, produto está na lixeira
+  deletedAt            DateTime?
+  /// Visitas na página do produto (loja)
+  viewCount            Int              @default(0)
+  /// Parcelas sem juros (ex: 2)
+  installmentsMax      Int              @default(2)
+  interestFree         Boolean          @default(true)
+  /// % de desconto no Pix (ex: 5)
+  pixDiscountPercent   Float            @default(5)
+  showPaymentFlags     Boolean          @default(true)
+  /// Frete (Melhor Envio) — peso em kg, dimensões da embalagem em cm
+  weightKg             Float?
+  lengthCm             Float?
+  widthCm              Float?
+  heightCm             Float?
+  /// Vídeo do produto (upload /uploads/videos/... ou URL YouTube/Vimeo)
+  videoUrl             String?
+  categoryId           String
+  category             Category         @relation(fields: [categoryId], references: [id])
+  images               ProductImage[]
+  variants             ProductVariant[]
+  stockAlerts          StockAlert[]
+  favorites            Favorite[]
+  reviews              ProductReview[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([categoryId])
   @@index([featured, active])
+  @@index([destaque, active])
+  @@index([deletedAt])
+  @@index([viewCount])
 }
 
 model ProductImage {
@@ -130,10 +188,13 @@ model ProductVariant {
   colorHex   String?
   stock      Int                 @default(0)
   minStock   Int                 @default(3)
+  /// Custo médio ponderado desta variante (só admin)
+  avgCost    Decimal             @default(0) @db.Decimal(10, 2)
   price      Decimal?            @db.Decimal(10, 2)
   active     Boolean             @default(true)
   movements  InventoryMovement[]
   orderItems OrderItem[]
+  stockAlerts StockAlert[]
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
@@ -141,17 +202,44 @@ model ProductVariant {
   @@index([stock])
 }
 
+/// Cliente pediu aviso quando variante/produto voltar ao estoque
+model StockAlert {
+  id        String          @id @default(cuid())
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  email     String
+  phone     String?
+  size      String?
+  color     String?
+  notified  Boolean         @default(false)
+  createdAt DateTime        @default(now())
+
+  @@index([productId, notified])
+  @@index([variantId, notified])
+  @@index([email])
+}
+
 model InventoryMovement {
-  id        String            @id @default(cuid())
-  variantId String
-  variant   ProductVariant    @relation(fields: [variantId], references: [id])
-  type      InventoryType
-  quantity  Int
-  note      String?
-  createdBy String?
-  createdAt DateTime          @default(now())
+  id           String         @id @default(cuid())
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  type         InventoryType
+  quantity     Int
+  /// Custo unitário na entrada (compra)
+  unitCost     Decimal?       @db.Decimal(10, 2)
+  /// Valor total da movimentação (qty * unitCost)
+  totalCost    Decimal?       @db.Decimal(10, 2)
+  /// Data da compra / nota fiscal
+  purchaseDate DateTime?
+  note         String?
+  createdBy    String?
+  createdAt    DateTime       @default(now())
 
   @@index([variantId])
+  @@index([purchaseDate])
+  @@index([type, createdAt])
 }
 
 model Customer {
@@ -162,13 +250,26 @@ model Customer {
   email     String         @unique
   phone     String?
   cpf       String?
+  avatarUrl String?
+  birthDate DateTime?
+  /// créditos / descontos de embaixadora (acumulado %)
+  ambassadorDiscountPercent Float @default(0)
   tags      String[]       @default([])
   notes     CustomerNote[]
   addresses Address[]
   orders    Order[]
   complaints Complaint[]
+  workouts  Workout[]
+  diets     DietPlan[]
+  progress  FitnessProgress[]
+  looks     LookPost[]
+  favorites Favorite[]
+  reviews   ProductReview[]
+  coupons   DiscountCoupon[]
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  @@index([cpf])
 }
 
 model Address {
@@ -184,6 +285,142 @@ model Address {
   state        String
   zipCode      String
   isDefault    Boolean  @default(true)
+}
+
+model Workout {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?  @db.Text
+  /// lista de exercícios: [{ name, sets, reps, load }]
+  exercises   Json     @default("[]")
+  trainedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId, trainedAt])
+}
+
+model DietPlan {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  title      String
+  content    String   @db.Text
+  calories   Int?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model FitnessProgress {
+  id           String   @id @default(cuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recordedAt   DateTime @default(now())
+  weightKg     Float?
+  bodyFatPct   Float?
+  notes        String?  @db.Text
+  photoUrl     String?
+  /// medidas: { bust, waist, hip, ... }
+  measurements Json?
+  createdAt    DateTime @default(now())
+
+  @@index([customerId, recordedAt])
+}
+
+enum LookStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Favoritos do cliente (coração estilo Instagram)
+model Favorite {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@index([productId])
+}
+
+/// Avaliação / comentário do produto — só aparece após aprovação do admin
+model ProductReview {
+  id         String       @id @default(cuid())
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Nota de 1 a 5
+  rating     Int
+  title      String?
+  body       String       @db.Text
+  status     ReviewStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([customerId, productId])
+  @@index([productId, status])
+  @@index([status, createdAt])
+  @@index([customerId])
+}
+
+/// Galeria de looks com roupas Majesté — embaixadora da marca
+model LookPost {
+  id            String          @id @default(cuid())
+  customerId    String
+  customer      Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  imageUrl      String
+  caption       String?         @db.Text
+  productName   String?
+  status        LookStatus      @default(PENDING)
+  /// % de desconto concedido ao aprovar (ex: 5)
+  rewardPercent Float           @default(5)
+  rewardCode    String?         @unique
+  rewardUsed    Boolean         @default(false)
+  /// Aceite do termo de consentimento de imagem (por envio)
+  imageConsentAcceptedAt DateTime?
+  imageConsentVersion    String?
+  imageConsentIp         String?
+  coupon        DiscountCoupon?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([customerId, status])
+  @@index([status])
+}
+
+/// Cupom de desconto (ex.: gerado ao aprovar look)
+model DiscountCoupon {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  percent    Float     @default(5)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lookPostId String?   @unique
+  lookPost   LookPost? @relation(fields: [lookPostId], references: [id], onDelete: SetNull)
+  used       Boolean   @default(false)
+  usedAt     DateTime?
+  orderId    String?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+  @@index([used])
 }
 
 model CustomerNote {
@@ -211,6 +448,7 @@ model Order {
   shippingCost    Decimal     @default(0) @db.Decimal(10, 2)
   discount        Decimal     @default(0) @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
+  couponCode      String?
   shippingStreet  String?
   shippingNumber  String?
   shippingComplement String?
@@ -219,32 +457,72 @@ model Order {
   shippingState   String?
   shippingZip     String?
   shippingMethod  String?
+  /// ID do serviço Melhor Envio (ex: "1") ou opção local
+  shippingServiceId String?
   trackingCode    String?
   notes           String?
+  /// Reserva de estoque válida até (pedido PENDING não pago)
+  reservedUntil   DateTime?
+  /// true = unidades ainda estão baixadas do estoque por este pedido
+  stockHeld       Boolean     @default(false)
+  /// NF-e: NONE | PENDING | ISSUED | ERROR | SKIPPED
+  nfeStatus       String?
+  nfeNumber       String?
+  nfeKey          String?
+  nfePdfUrl       String?
+  nfeExternalId   String?
+  nfeError        String?
+  nfeIssuedAt     DateTime?
+  /// Impressão: NONE | QUEUED | PRINTED | ERROR
+  printStatus     String?
+  printedAt       DateTime?
+  /// Atribuição de tráfego (UTM / click id do anúncio)
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  utmTerm         String?
+  /// fbclid ou gclid
+  clickId         String?
+  /// Quando a receita foi somada na campanha de tráfego
+  attributionSyncedAt DateTime?
   items           OrderItem[]
   payment         Payment?
   shipment        Shipment?
   complaints      Complaint[]
   cashEntries     CashEntry[]
+  printJobs       PrintJob[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   @@index([status])
   @@index([createdAt])
+  @@index([nfeStatus])
+  @@index([printStatus])
+  @@index([reservedUntil, status])
+  @@index([stockHeld, status])
+  @@index([utmSource, createdAt])
+  @@index([utmCampaign, createdAt])
 }
 
 model OrderItem {
-  id        String         @id @default(cuid())
-  orderId   String
-  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variantId String
-  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
   productName String
-  size      String
-  color     String
-  quantity  Int
-  unitPrice Decimal        @db.Decimal(10, 2)
-  total     Decimal        @db.Decimal(10, 2)
+  size        String
+  color       String
+  quantity    Int
+  unitPrice   Decimal        @db.Decimal(10, 2)
+  /// Custo unitário no momento da venda (CMV histórico — mercadoria)
+  unitCost    Decimal        @default(0) @db.Decimal(10, 2)
+  /// Embalagem unitária no momento da venda (caixa+etiqueta+sacola+outros)
+  unitPackaging Decimal      @default(0) @db.Decimal(10, 2)
+  /// Imposto estimado unitário no momento da venda
+  unitTax     Decimal        @default(0) @db.Decimal(10, 2)
+  total       Decimal        @db.Decimal(10, 2)
 }
 
 model Payment {
@@ -258,6 +536,8 @@ model Payment {
   mercadoPagoStatus String?
   pixQrCode         String?
   pixQrCodeBase64   String?
+  boletoUrl         String?
+  boletoBarcode     String?
   paidAt            DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -322,4 +602,350 @@ model CashEntry {
 
   @@index([date])
   @@index([type])
+}
+
+/// Fila de impressão de pedidos (casa / PrintNode / agente local)
+model PrintJob {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// PENDING | SENT | PRINTED | FAILED
+  status     String   @default("PENDING")
+  provider   String?
+  externalId String?
+  error      String?
+  payload    String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([orderId])
+}
+
+/// Tarefas / planejamento do dia (painel admin)
+model AdminTask {
+  id        String          @id @default(cuid())
+  title     String
+  notes     String?
+  /// Dia da tarefa (só a data importa)
+  dueDate   DateTime
+  /// Horário opcional (HH:mm)
+  dueTime   String?
+  /// Área: Instagram, Pedidos, Estoque, Frete, etc.
+  category  String?
+  status    AdminTaskStatus @default(TODO)
+  /// 0 = normal, 1 = alta, 2 = urgente
+  priority  Int             @default(0)
+  createdBy String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([dueDate, status])
+  @@index([status])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String
+  thumbUrl  String?
+  alt       String?
+  width     Int?
+  height    Int?
+  source    String   @default("upload")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Banco exclusivo de vídeos (upload ou import YouTube/TikTok/Instagram)
+model VideoAsset {
+  id          String   @id @default(cuid())
+  /// Arquivo local /uploads/video-bank/{uuid}/video.mp4
+  /// ou /uploads/video-cutout-bank/{uuid}/playable.webm (recortado)
+  url         String
+  thumbUrl    String?
+  title       String?
+  /// URL original (YouTube, TikTok, Instagram…)
+  sourceUrl   String?
+  /// youtube | tiktok | instagram | upload | other | cutout
+  platform    String   @default("upload")
+  /// full = vídeo completo | cutout = só o corpo (fundo removido)
+  kind        String   @default("full")
+  durationSec Int?
+  bytes       Int?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([platform])
+  @@index([active])
+  @@index([kind])
+}
+
+/// Stories do dia (bolinha Ao Vivo — estilo Instagram)
+model StoreStory {
+  id           String   @id @default(cuid())
+  /// Arquivo /uploads/... (preferir banco de vídeos)
+  videoUrl     String
+  title        String?
+  /// Pergunta opcional para o cliente responder
+  question     String?
+  /// JSON array de opções, ex: ["Sim","Não"]
+  questionOpts String?
+  /// Link da sacola (produto/categoria)
+  shopHref     String?
+  sortOrder    Int      @default(0)
+  /// Ativo = entra no rodízio do dia (respeita limite em SiteSetting)
+  active       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  answers      StoryAnswer[]
+
+  @@index([active, sortOrder])
+}
+
+model StoryAnswer {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     StoreStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  /// Resposta da enquete ou texto livre (elogio/comentário)
+  answer    String
+  /// poll = opção da pergunta | comment = texto livre no fim dos stories
+  kind      String   @default("poll")
+  createdAt DateTime @default(now())
+
+  @@index([storyId, createdAt])
+  @@index([kind, createdAt])
+}
+
+model Banner {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String?
+  ctaLabel   String?
+  ctaHref    String?
+  imageUrl   String
+  textAlign  String   @default("left")
+  overlay    Float    @default(0)
+  /// studio | fullbleed | promo | overlay | cutouts (modelos no fundo da marca)
+  layout     String   @default("studio")
+  bgColor    String   @default("#f0e8df")
+  /// cor do painel de promoção (layout promo)
+  panelColor String   @default("#1a2744")
+  /// destaque grande: ex. 10% off
+  highlight  String?
+  /// texto promocional: parcelas, cupom, etc.
+  promoText  String?
+  /// código do cupom: PRIMEIRACOMPRA
+  couponCode String?
+  /// linha fina espaçada: EXCLUSIVIDADE
+  tagline    String?
+  /// compact | normal | tall
+  bannerSize String   @default("tall")
+  imageFit   String   @default("contain")
+  focalX     Float    @default(50)
+  focalY     Float    @default(50)
+  imageZoom  Float    @default(1)
+  /// estilos de tipografia (fonte, cor, tamanho, negrito...)
+  textStyle  Json?
+  /// URLs extras de modelos recortadas (layout cutouts / studio)
+  cutoutImages Json?
+  /// Vídeo do banner (MP4/WebM) — legado; preferir videoPlaylist
+  videoUrl     String?
+  /// Segundos do vídeo legado (padrão 8)
+  videoSeconds Int?
+  /// Lista de vídeos no mesmo banner (até 3): [{ url, seconds }]
+  videoPlaylist Json?
+  /// sequence = um após o outro | pair = dois lado a lado
+  videoLayout  String   @default("sequence")
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+/// Posts do Instagram exibidos em /instagram (manual ou sync Graph API)
+model InstagramPost {
+  id            String   @id @default(cuid())
+  /// permalink completo do post/reel
+  permalink     String
+  shortcode     String
+  /// IMAGE | VIDEO | CAROUSEL
+  mediaType     String   @default("IMAGE")
+  caption       String?  @db.Text
+  /// capa na grade (upload local ou URL do Graph)
+  coverUrl      String?
+  /// mídia original quando sync via API (foto/vídeo)
+  mediaUrl      String?
+  thumbnailUrl  String?
+  /// id do Instagram Graph (para upsert na sync)
+  igMediaId     String?  @unique
+  postedAt      DateTime?
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([shortcode])
+  @@index([active, sortOrder])
+  @@index([mediaType])
+}
+
+/// Configurações simples da loja (chave/valor)
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+/// Inscritos do formulário “Inscreva-se” da home
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  active    Boolean  @default(true)
+  source    String   @default("home")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, createdAt])
+}
+
+enum MarketingChannel {
+  EMAIL
+  INSTAGRAM
+}
+
+enum MarketingCreativeStatus {
+  DRAFT
+  READY
+  SENT
+}
+
+/// Artes de divulgação (e-mail marketing ou Instagram)
+model MarketingCreative {
+  id        String                   @id @default(cuid())
+  title     String
+  channel   MarketingChannel
+  /// EMAIL | IG_FEED | IG_PORTRAIT | IG_STORY | IG_REELS
+  format    String                   @default("EMAIL")
+  /// assunto do e-mail
+  subject   String?
+  /// corpo / legenda
+  body      String?                  @db.Text
+  imageUrl  String?
+  ctaLabel  String?
+  ctaHref   String?
+  /// hashtags (Instagram)
+  hashtags  String?
+  status    MarketingCreativeStatus  @default(DRAFT)
+  sentAt    DateTime?
+  sentCount Int                      @default(0)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@index([channel, createdAt])
+  @@index([status])
+}
+
+/// Log de auditoria — alterações, exclusões e lançamentos
+model AuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  /// products | inventory | orders | finance | categories | marketing | promotions | shipping | customers | settings | media | system
+  category   String
+  /// create | update | delete | restore | launch | adjust
+  action     String
+  entityType String?
+  entityId   String?
+  summary    String
+  detail     String?  @db.Text
+  actorId    String?
+  actorEmail String?
+  actorName  String?
+  ip         String?
+  /// admin | store | webhook | system
+  source     String   @default("admin")
+
+  @@index([createdAt])
+  @@index([category, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorEmail, createdAt])
+}
+
+/// Visitas da loja (analytics de lançamento) — IP hasheado
+model SiteVisit {
+  id         String   @id @default(cuid())
+  path       String
+  /// hash SHA-256 do IP (LGPD)
+  ipHash     String
+  /// prefixo parcial só para visão admin (ex. 187.45.12.*)
+  ipPrefix   String?
+  userAgent  String?  @db.Text
+  /// mobile | desktop | tablet | unknown
+  deviceType String   @default("unknown")
+  sessionId  String?
+  utmSource  String?
+  utmMedium  String?
+  utmCampaign String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
+  @@index([deviceType, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([utmSource, createdAt])
+}
+
+/// Campanha de tráfego pago / orgânico (registro manual de resultados)
+model TrafficCampaign {
+  id          String   @id @default(cuid())
+  name        String
+  /// meta | google | tiktok | pinterest | whatsapp | organic_ig | organic_google | other
+  platform    String
+  /// paid | organic
+  kind        String   @default("paid")
+  objective   String?
+  spend       Decimal  @default(0) @db.Decimal(12, 2)
+  revenue     Decimal  @default(0) @db.Decimal(12, 2)
+  clicks      Int      @default(0)
+  leads       Int      @default(0)
+  orders      Int      @default(0)
+  notes       String?  @db.Text
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([platform, startedAt])
+  @@index([kind, startedAt])
+  @@index([active, startedAt])
+}
+
+/// Carrinho abandonado (sync do browser + e-mail/WhatsApp de recuperação)
+model AbandonedCart {
+  id           String    @id @default(cuid())
+  sessionId    String
+  email        String?
+  phone        String?
+  itemsJson    String    @db.Text
+  itemCount    Int       @default(0)
+  subtotal     Decimal   @default(0) @db.Decimal(12, 2)
+  /// open | reminded | recovered | closed
+  status       String    @default("open")
+  remindedAt   DateTime?
+  recoveredAt  DateTime?
+  lastSeenAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([sessionId])
+  @@index([status, lastSeenAt])
+  @@index([email, status])
+  @@index([remindedAt])
 }

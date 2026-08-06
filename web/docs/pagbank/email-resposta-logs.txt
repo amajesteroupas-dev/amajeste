@@ -1,0 +1,37 @@
+Assunto: Logs de validação produção — Majesté Fitness (API Orders ainda em whitelist)
+
+Boa tarde, Maurício — tudo bem?
+
+Conforme solicitado, realizamos o teste em produção com o token gerado em
+Vendas > Plataformas e Checkout > Integrações.
+
+Segue o resumo dos logs (arquivo completo em anexo / corpo abaixo):
+
+RESULTADOS
+- GET  /public-keys/card  → HTTP 200 OK
+- POST /public-keys       → HTTP 200 OK
+- POST /checkouts         → HTTP 201 OK (id CHEC_44FB5A97-33DA-41C6-9E95-2BE7E3158676)
+- Webhook loja            → HTTP 200 OK (https://amajeste.com.br/api/webhooks/pagseguro)
+- POST /orders (Pix R$1)  → HTTP 403
+  {"error_messages":[{"code":"ACCESS_DENIED","description":"whitelist access required. Contact PagSeguro"}]}
+
+Ou seja: o token de produção está válido, mas a API de Pedidos (Orders) —
+necessária para o checkout transparente no site (cartão criptografado + Pix
+no próprio amajeste.com.br) — ainda retorna whitelist access required.
+
+Dados da integração:
+- Site: https://amajeste.com.br
+- Aplicação Connect: majeste-fitness
+- Ambiente: https://api.pagseguro.com
+- Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+- Modelo: integração própria (não marketplace / sem split)
+
+Pedimos, por favor, a liberação da allowlist de POST /orders em produção
+para concluirmos a última validação e não perdermos o acesso à produção.
+
+Ficamos à disposição para novo teste assim que a whitelist for aplicada
+(podemos reenviar os logs imediatamente após a liberação).
+
+Atenciosamente,
+Majesté Fitness
+https://amajeste.com.br

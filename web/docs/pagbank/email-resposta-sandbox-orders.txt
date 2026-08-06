@@ -1,0 +1,21 @@
+Olá Gabriel, tudo bem?
+
+Segue em anexo o log de testes reais em Sandbox da API Orders (request + response),
+com os meios de pagamento que utilizaremos na integração:
+
+1) PIX — POST /orders com qr_codes
+2) Cartão de crédito — POST /orders com payment_method.type = CREDIT_CARD
+
+Integração: checkout transparente no próprio domínio (https://amajeste.com.br).
+Não utilizaremos Divisão de Pagamentos / split.
+
+Em produção o cartão será enviado criptografado (PagSeguro.encryptCard + campo card.encrypted).
+No Sandbox incluímos o teste de cartão conforme documentação PCI para gerar evidência efetiva.
+
+Aplicação Connect: majeste-fitness
+Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+
+Ficamos no aguardo da validação / liberação da API Orders.
+
+Atenciosamente,
+Equipe Majesté Fitness

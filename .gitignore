@@ -4,6 +4,12 @@ web/.env
 web/node_modules
 web/.next
 web/uploads
+web/tsconfig.tsbuildinfo
+web/public/products/
+mobile/node_modules
+mobile/.expo
+mobile/dist
+mobile/.env
 nginx/certs/*.pem
 *.log
 .DS_Store

@@ -50,6 +50,7 @@ async function main() {
     {
       name: "Conjunto Aurora",
       slug: "conjunto-aurora",
+      image: "/brand/prod-2.jpeg",
       description:
         "Conjunto fitness com modelagem que une conforto, desempenho e feminilidade. Tecido de alta compressão com toque macio.",
       price: 179.9,
@@ -64,6 +65,7 @@ async function main() {
     {
       name: "Conjunto Legging",
       slug: "conjunto-legging-classico",
+      image: "/brand/prod-6.jpeg",
       description:
         "Conjunto legging clássico Majesté. Cintura alta e acabamento premium para treinos e uso diário.",
       price: 159.9,
@@ -77,6 +79,7 @@ async function main() {
     {
       name: "Conjunto Gisele",
       slug: "conjunto-gisele",
+      image: "/brand/prod-3.jpeg",
       description: "Conjunto versátil com opções de cores vibrantes. Ideal para academia e streetwear.",
       price: 149.9,
       costPrice: 62,
@@ -91,6 +94,7 @@ async function main() {
     {
       name: "Macacão Paloma",
       slug: "macacao-paloma",
+      image: "/brand/prod-4.jpeg",
       description: "Macacão elegante com caimento sofisticado. Peça statement da coleção Majesté.",
       price: 199.9,
       costPrice: 85,
@@ -103,6 +107,7 @@ async function main() {
     {
       name: "Corta Vento",
       slug: "corta-vento",
+      image: "/brand/prod-corta.jpeg",
       description: "Corta vento leve e resistente, disponível em várias cores. Proteção e estilo.",
       price: 99.9,
       costPrice: 40,
@@ -118,6 +123,7 @@ async function main() {
     {
       name: "Casaco",
       slug: "casaco",
+      image: "/brand/prod-1.jpeg",
       description: "Casaco confortável para dias mais frios. Toque macio e visual clean.",
       price: 129.9,
       costPrice: 55,
@@ -132,6 +138,7 @@ async function main() {
     {
       name: "Conjunto Mari",
       slug: "conjunto-mari",
+      image: "/brand/prod-8.jpeg",
       description: "Conjunto Mari com modelagem moderna e tecido de compressão média.",
       price: 189.9,
       costPrice: 80,
@@ -144,6 +151,7 @@ async function main() {
     {
       name: "Conjunto Nina",
       slug: "conjunto-nina",
+      image: "/brand/prod-11.jpeg",
       description: "Conjunto Nina em vermelho vibrante. Destaque garantido no treino.",
       price: 149.9,
       costPrice: 65,
@@ -156,7 +164,7 @@ async function main() {
   ];
 
   for (const p of products) {
-    const { variants, ...productData } = p;
+    const { variants, image, ...productData } = p;
     const product = await prisma.product.upsert({
       where: { slug: p.slug },
       update: {
@@ -173,7 +181,7 @@ async function main() {
         images: {
           create: [
             {
-              url: `/placeholders/${p.slug}.svg`,
+              url: image,
               alt: p.name,
               isPrimary: true,
               sortOrder: 0,
@@ -182,6 +190,27 @@ async function main() {
         },
       },
     });
+
+    const existingImage = await prisma.productImage.findFirst({
+      where: { productId: product.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    if (existingImage) {
+      await prisma.productImage.update({
+        where: { id: existingImage.id },
+        data: { url: image, alt: p.name, isPrimary: true },
+      });
+    } else {
+      await prisma.productImage.create({
+        data: {
+          productId: product.id,
+          url: image,
+          alt: p.name,
+          isPrimary: true,
+          sortOrder: 0,
+        },
+      });
+    }
 
     for (const v of variants) {
       await prisma.productVariant.upsert({

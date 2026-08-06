@@ -18,9 +18,12 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[];
+  /** CEP da estimativa no produto / checkout (segue na compra sem cadastro). */
+  shippingZip: string;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (variantId: string) => void;
   updateQty: (variantId: string, quantity: number) => void;
+  setShippingZip: (zip: string) => void;
   clear: () => void;
   totalItems: () => number;
   subtotal: () => number;
@@ -30,6 +33,7 @@ export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      shippingZip: "",
       addItem: (item) => {
         const qty = item.quantity ?? 1;
         set((state) => {
@@ -69,6 +73,7 @@ export const useCart = create<CartState>()(
                     : i
                 ),
         })),
+      setShippingZip: (zip) => set({ shippingZip: zip }),
       clear: () => set({ items: [] }),
       totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal: () =>

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Category" ADD COLUMN IF NOT EXISTS "priceAdjustPercent" DOUBLE PRECISION NOT NULL DEFAULT 0;

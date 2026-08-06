@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 70" fill="none">
+  <g fill="#C9A24A">
+    <path d="M140 6l10 14 14-8-4 16 14 8-16 2-4 16-8-14-16 6 8-14-14-8 16-2z"/>
+    <path d="M118 22h44v3H118z"/>
+  </g>
+  <text x="140" y="52" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#C9A24A" letter-spacing="4">Majesté</text>
+  <text x="140" y="66" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#C9A24A" letter-spacing="3">BY THAIS</text>
+</svg>

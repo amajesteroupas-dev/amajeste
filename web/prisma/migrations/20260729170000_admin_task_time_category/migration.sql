@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "AdminTask" ADD COLUMN IF NOT EXISTS "dueTime" TEXT;
+ALTER TABLE "AdminTask" ADD COLUMN IF NOT EXISTS "category" TEXT;

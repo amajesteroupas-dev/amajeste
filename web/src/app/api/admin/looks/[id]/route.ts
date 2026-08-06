@@ -1,0 +1,118 @@
+import { NextRequest, NextResponse } from "next/server";
+import { adminAuth } from "@/lib/admin-auth";
+import { prisma } from "@/lib/prisma";
+import { generateUniqueCouponCode } from "@/lib/coupon-code";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+async function requireStaff() {
+  const session = await adminAuth();
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "STAFF")
+  ) {
+    return null;
+  }
+  return session;
+}
+
+export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const session = await requireStaff();
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const body = await req.json().catch(() => ({}));
+  const status = String(body.status || "").toUpperCase();
+
+  if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+    return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+  }
+
+  const look = await prisma.lookPost.findUnique({
+    where: { id },
+    include: { coupon: true, customer: true },
+  });
+  if (!look) {
+    return NextResponse.json({ error: "Look não encontrado" }, { status: 404 });
+  }
+
+  // Aprovar: gera cupom único se ainda não tiver
+  if (status === "APPROVED" && look.status !== "APPROVED") {
+    const rewardPercent = look.rewardPercent || 5;
+    const code =
+      look.rewardCode ||
+      look.coupon?.code ||
+      (await generateUniqueCouponCode("MAJ"));
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.lookPost.update({
+        where: { id },
+        data: {
+          status: "APPROVED",
+          rewardCode: code,
+          rewardPercent,
+          rewardUsed: false,
+        },
+      });
+
+      await tx.discountCoupon.upsert({
+        where: { lookPostId: id },
+        create: {
+          code,
+          percent: rewardPercent,
+          customerId: look.customerId,
+          lookPostId: id,
+          used: false,
+        },
+        update: {
+          code,
+          percent: rewardPercent,
+          customerId: look.customerId,
+          used: false,
+          usedAt: null,
+          orderId: null,
+        },
+      });
+
+      // só incrementa créditos na primeira aprovação
+      if (!look.rewardCode) {
+        await tx.customer.update({
+          where: { id: look.customerId },
+          data: {
+            ambassadorDiscountPercent: { increment: rewardPercent },
+            tags: Array.from(
+              new Set([...(look.customer.tags || []), "embaixadora"])
+            ),
+          },
+        });
+      }
+
+      return next;
+    });
+
+    return NextResponse.json({
+      ok: true,
+      look: updated,
+      couponCode: code,
+      message: `Aprovado. Cupom ${code} (−${rewardPercent}%) gerado para a cliente.`,
+    });
+  }
+
+  const updated = await prisma.lookPost.update({
+    where: { id },
+    data: { status: status as "PENDING" | "APPROVED" | "REJECTED" },
+  });
+
+  return NextResponse.json({ ok: true, look: updated });
+}
+
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  if (!(await requireStaff())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+  const { id } = await ctx.params;
+  await prisma.lookPost.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

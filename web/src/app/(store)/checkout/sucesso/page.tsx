@@ -1,50 +1,116 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatBRL } from "@/lib/utils";
+import QRCode from "qrcode";
+import { OrderReceipt } from "@/components/store/OrderReceipt";
+import { verifyOrderAccess } from "@/lib/order-access";
+import { auth } from "@/lib/auth";
+import {
+  isLocalShippingId,
+  localShippingWhatsAppUrl,
+} from "@/lib/shipping";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ order?: string }> };
+type Props = {
+  searchParams: Promise<{ order?: string; t?: string }>;
+};
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
-  const { order: orderNumber } = await searchParams;
-  const order = orderNumber
-    ? await prisma.order.findUnique({
-        where: { orderNumber },
-        include: { payment: true },
-      })
-    : null;
+  const { order: orderNumber, t } = await searchParams;
+  const session = await auth();
+  const isStaff =
+    session?.user?.role === "ADMIN" || session?.user?.role === "STAFF";
+
+  let order =
+    orderNumber
+      ? await prisma.order.findUnique({
+          where: { orderNumber },
+          include: { payment: true, items: true, customer: true },
+        })
+      : null;
+
+  if (order && orderNumber) {
+    const tokenOk = verifyOrderAccess(orderNumber, t);
+    const ownerOk =
+      session?.user?.role === "CUSTOMER" &&
+      Boolean(
+        (session.user.email &&
+          order.guestEmail &&
+          session.user.email.toLowerCase() === order.guestEmail.toLowerCase()) ||
+          (order.customer?.userId && order.customer.userId === session.user.id)
+      );
+    if (!tokenOk && !isStaff && !ownerOk) {
+      order = null;
+    }
+  }
+
+  let pixQrDataUrl: string | null = null;
+  const pixCode = order?.payment?.pixQrCode?.trim() || "";
+  if (pixCode) {
+    if (order?.payment?.pixQrCodeBase64) {
+      pixQrDataUrl = order.payment.pixQrCodeBase64.startsWith("data:")
+        ? order.payment.pixQrCodeBase64
+        : `data:image/png;base64,${order.payment.pixQrCodeBase64}`;
+    } else {
+      try {
+        pixQrDataUrl = await QRCode.toDataURL(pixCode, {
+          margin: 1,
+          width: 220,
+        });
+      } catch {
+        pixQrDataUrl = null;
+      }
+    }
+  }
+
+  const localDeliveryWhatsapp =
+    order && isLocalShippingId(order.shippingServiceId)
+      ? localShippingWhatsAppUrl(`Pedido ${order.orderNumber}.`)
+      : null;
 
   return (
-    <div className="container-maj py-20 max-w-xl text-center">
-      <h1
-        className="text-4xl mb-4"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        Pedido recebido
-      </h1>
+    <div className="container-maj py-16 md:py-20 max-w-xl">
       {order ? (
-        <div className="space-y-3 text-left border border-line bg-surface p-6 mb-8">
-          <p>
-            Número: <strong>{order.orderNumber}</strong>
-          </p>
-          <p>Total: {formatBRL(Number(order.total))}</p>
-          <p>Status: {order.status}</p>
-          {order.payment?.pixQrCode && (
-            <div className="mt-4">
-              <p className="text-sm mb-2">Pix copia e cola:</p>
-              <code className="block break-all text-xs bg-background p-3">
-                {order.payment.pixQrCode}
-              </code>
-            </div>
-          )}
-        </div>
+        <OrderReceipt
+          showStoreCta
+          order={{
+            orderNumber: order.orderNumber,
+            total: Number(order.total),
+            status: order.status,
+            paymentMethod: order.payment?.method,
+            paymentStatus: order.payment?.status,
+            pixCode: pixCode || null,
+            pixQrDataUrl,
+            boletoBarcode: order.payment?.boletoBarcode,
+            boletoUrl: order.payment?.boletoUrl,
+            localDeliveryWhatsapp,
+            items: order.items.map((i) => ({
+              productName: i.productName,
+              size: i.size,
+              color: i.color,
+              quantity: i.quantity,
+              total: Number(i.total),
+            })),
+          }}
+        />
       ) : (
-        <p className="text-muted mb-8">Obrigada pela compra!</p>
+        <div className="text-center mb-8 space-y-4">
+          <h1
+            className="text-4xl mb-3"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {orderNumber ? "Comprovante indisponível" : "Pedido recebido"}
+          </h1>
+          <p className="text-muted">
+            {orderNumber
+              ? "Este link é inválido ou expirou. Acesse pela sua conta ou use o link enviado no fim da compra."
+              : "Obrigada pela compra — volte sempre!"}
+          </p>
+          <Link href="/" className="btn btn-outline inline-flex">
+            Continuar me sentindo poderosa
+          </Link>
+        </div>
       )}
-      <Link href="/" className="btn btn-primary">
-        Voltar à loja
-      </Link>
     </div>
   );
 }

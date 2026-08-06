@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="900" y1="0" x2="1600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2a2420"/>
+      <stop offset="0.45" stop-color="#1a1514"/>
+      <stop offset="1" stop-color="#0a0a0b"/>
+    </linearGradient>
+    <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1180 420) rotate(90) scale(520 380)">
+      <stop stop-color="#d4b56a" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#d4b56a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="figure" x1="980" y1="180" x2="1320" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3a3230"/>
+      <stop offset="1" stop-color="#151210"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#g1)"/>
+  <circle cx="1180" cy="420" r="420" fill="url(#g2)"/>
+  <!-- stylized silhouette suggestion -->
+  <path d="M1080 240c40-70 140-90 210-40 55 40 70 120 45 190-10 28-8 50 8 72l55 78c28 40 22 95-12 128l-48 46v286c0 40-28 72-68 72h-90c-40 0-68-32-68-72V714l-42-40c-36-34-40-90-10-130l52-72c18-24 22-52 12-80-28-78-4-168 56-178z" fill="url(#figure)" opacity="0.85"/>
+  <path d="M1125 390c18-8 42-6 58 8" stroke="#d4b56a" stroke-opacity="0.35" stroke-width="2"/>
+  <path d="M200 980h420" stroke="#d4b56a" stroke-opacity="0.25" stroke-width="1"/>
+  <circle cx="200" cy="980" r="3" fill="#d4b56a" fill-opacity="0.5"/>
+</svg>

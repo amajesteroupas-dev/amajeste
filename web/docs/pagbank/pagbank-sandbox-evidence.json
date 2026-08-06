@@ -1,0 +1,102 @@
+{
+  "integration": "PagBank API Checkouts (checkout hospedado)",
+  "payment_methods": [
+    "CREDIT_CARD (na pagina PagBank)",
+    "PIX (na pagina PagBank)"
+  ],
+  "environment": "sandbox",
+  "tested_at": "2026-07-30T16:20:04.674Z",
+  "request": {
+    "method": "POST",
+    "url": "https://sandbox.api.pagseguro.com/checkouts",
+    "headers": {
+      "Authorization": "Bearer a157c9...50c1",
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    "body": {
+      "reference_id": "MAJ-SBX-5428403460",
+      "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909",
+        "phones": [
+          {
+            "country": "55",
+            "area": "11",
+            "number": "999999999",
+            "type": "MOBILE"
+          }
+        ]
+      },
+      "items": [
+        {
+          "reference_id": "item-1",
+          "name": "Macacao Isa - Teste Sandbox Majeste",
+          "quantity": 1,
+          "unit_amount": 500
+        }
+      ],
+      "redirect_url": "https://equilibra.tech/checkout/sucesso?order=MAJ-SBX-5428403460",
+      "return_url": "https://equilibra.tech/checkout/sucesso?order=MAJ-SBX-5428403460",
+      "payment_notification_urls": [
+        "https://equilibra.tech/api/webhooks/pagseguro"
+      ],
+      "notification_urls": [
+        "https://equilibra.tech/api/webhooks/pagseguro"
+      ],
+      "additional_amount": 0
+    }
+  },
+  "response": {
+    "http_status": 201,
+    "body": {
+      "id": "CHEC_3AF0F542-24AA-4AC2-A8E2-784B9F002FE9",
+      "reference_id": "MAJ-SBX-5428403460",
+      "created_at": "2026-07-30T13:20:04-03:00",
+      "status": "ACTIVE",
+      "customer": {
+        "name": "Jose da Silva",
+        "email": "email@test.com",
+        "tax_id": "12345678909"
+      },
+      "customer_modifiable": true,
+      "items": [
+        {
+          "reference_id": "item-1",
+          "name": "Macacao Isa - Teste Sandbox Majeste",
+          "quantity": 1,
+          "unit_amount": 500
+        }
+      ],
+      "additional_amount": 0,
+      "discount_amount": 0,
+      "redirect_url": "https://equilibra.tech/checkout/sucesso?order=MAJ-SBX-5428403460",
+      "return_url": "https://equilibra.tech/checkout/sucesso?order=MAJ-SBX-5428403460",
+      "notification_urls": [
+        "https://equilibra.tech/api/webhooks/pagseguro"
+      ],
+      "payment_notification_urls": [
+        "https://equilibra.tech/api/webhooks/pagseguro"
+      ],
+      "links": [
+        {
+          "rel": "SELF",
+          "href": "https://sandbox.api.pagseguro.com/checkouts/CHEC_3AF0F542-24AA-4AC2-A8E2-784B9F002FE9",
+          "method": "GET"
+        },
+        {
+          "rel": "PAY",
+          "href": "https://pagamento.sandbox.pagbank.com.br/pagamento?code=3af0f542-24aa-4ac2-a8e2-784b9f002fe9",
+          "method": "GET"
+        },
+        {
+          "rel": "INACTIVATE",
+          "href": "https://sandbox.api.pagseguro.com/checkouts/CHEC_3AF0F542-24AA-4AC2-A8E2-784B9F002FE9/inactivate",
+          "method": "POST"
+        }
+      ],
+      "origin": "CHECKOUT_WEB"
+    }
+  }
+}

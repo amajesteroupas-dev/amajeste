@@ -1,0 +1,48 @@
+Assunto: Logs API Checkout + solicitação de homologação API Orders — Majesté Fitness
+
+Olá, Maurício — tudo bem?
+
+Segue, conforme solicitado, o log de validação da **API Checkout** em produção.
+
+RESUMO API CHECKOUT
+- POST /checkouts → HTTP 201 OK
+  id: CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8
+  reference_id: chk-valid-1785767276395
+  status: ACTIVE
+  link PAY: https://pagamento.pagbank.com.br/pagamento?code=331af7dd-1e08-4645-8827-bbc3518061f8
+- GET /checkouts/{id} → HTTP 200 OK
+- Webhook: https://amajeste.com.br/api/webhooks/pagseguro → HTTP 200 OK
+
+Log completo em anexo: log-validacao-checkout.txt
+
+Com esses logs, podem finalizar a homologação da API Checkout.
+
+---
+
+ESCLARECIMENTO / NOVA SOLICITAÇÃO — API ORDERS
+
+No alinhamento anterior, de fato o chamado tratou a API Checkout.
+Porém o modelo de negócio da loja (amajeste.com.br) é o **checkout transparente no próprio site** (cartão criptografado + Pix na página da loja, sem redirecionar o cliente para a página hospedada do PagBank) — no mesmo modelo do Mercado Pago.
+
+Para isso precisamos da liberação / allowlist da **API de Pedidos (Orders)** em produção:
+
+- POST /orders (CREDIT_CARD com encrypted card + Pix com qr_codes)
+- Ambiente: https://api.pagseguro.com
+- Token: Integrações (produção) — o mesmo que já autentica Checkout e public-keys
+- Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+- Aplicação Connect: majeste-fitness
+- Integração própria (não marketplace / sem split)
+
+Hoje POST /orders ainda retorna:
+HTTP 403
+{"error_messages":[{"code":"ACCESS_DENIED","description":"whitelist access required. Contact PagSeguro"}]}
+
+Pedimos, por favor:
+1) Finalizar a homologação da API Checkout com os logs anexos; e
+2) Abrir / tratar a homologação da **API Orders** (whitelist) para a mesma conta, para o checkout transparente no site.
+
+Ficamos à disposição para novo teste e envio de logs da API Orders assim que a allowlist for aplicada.
+
+Atenciosamente,
+Majesté Fitness
+https://amajeste.com.br

@@ -1,0 +1,109 @@
+================================================================
+LOG DE VALIDAÇÃO — PagBank API CHECKOUT (Produção)
+Loja: Majesté Fitness | Site: https://amajeste.com.br
+Aplicação Connect: majeste-fitness
+Data/hora (UTC): 2026-08-03T14:27:56.386Z
+Ambiente API: https://api.pagseguro.com
+Escopo: API Checkout (POST /checkouts + GET /checkouts/{id})
+Token: Vendas > Plataformas e Checkout > Integrações (produção, mascarado)
+================================================================
+
+1) CREDENCIAIS (mascaradas)
+----------------------------------------------------------------
+Ambiente: produção (sandbox = false)
+Token Integrações (Bearer): 8e475b…dc46 (len=100)
+Notification URL: https://amajeste.com.br/api/webhooks/pagseguro
+Redirect/Return URL: https://amajeste.com.br/checkout/sucesso
+
+2) TESTE A — POST /checkouts (R$ 1,00)
+----------------------------------------------------------------
+Request:
+{
+  "reference_id": "chk-valid-1785767276395",
+  "customer": {
+    "name": "Validacao Homologacao Majeste",
+    "email": "validacao@amajeste.com.br",
+    "tax_id": "39053344705"
+  },
+  "items": [
+    {
+      "reference_id": "item-checkout-validacao",
+      "name": "Teste homologacao API Checkout",
+      "quantity": 1,
+      "unit_amount": 100
+    }
+  ],
+  "redirect_url": "https://amajeste.com.br/checkout/sucesso",
+  "return_url": "https://amajeste.com.br/checkout/sucesso",
+  "notification_urls": [
+    "https://amajeste.com.br/api/webhooks/pagseguro"
+  ]
+}
+
+Response:
+HTTP 201 (390 ms)
+{
+  "id": "CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8",
+  "reference_id": "chk-valid-1785767276395",
+  "created_at": "2026-08-03T11:27:56-03:00",
+  "status": "ACTIVE",
+  "customer": {
+    "name": "Validacao Homologacao Majeste",
+    "email": "validacao@amajeste.com.br",
+    "tax_id": "39053344705"
+  },
+  "items": [
+    {
+      "reference_id": "item-checkout-validacao",
+      "name": "Teste homologacao API Checkout",
+      "quantity": 1,
+      "unit_amount": 100
+    }
+  ],
+  "redirect_url": "https://amajeste.com.br/checkout/sucesso",
+  "return_url": "https://amajeste.com.br/checkout/sucesso",
+  "notification_urls": [
+    "https://amajeste.com.br/api/webhooks/pagseguro"
+  ],
+  "links": [
+    {
+      "rel": "SELF",
+      "href": "https://api.pagseguro.com/checkouts/CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8",
+      "method": "GET"
+    },
+    {
+      "rel": "PAY",
+      "href": "https://pagamento.pagbank.com.br/pagamento?code=331af7dd-1e08-4645-8827-bbc3518061f8",
+      "method": "GET"
+    },
+    {
+      "rel": "INACTIVATE",
+      "href": "https://api.pagseguro.com/checkouts/CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8/inactivate",
+      "method": "POST"
+    }
+  ],
+  "origin": "CHECKOUT_WEB"
+}
+
+Resultado: OK
+
+3) TESTE B — GET /checkouts/CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8
+----------------------------------------------------------------
+HTTP 200 (107 ms)
+status: ACTIVE
+Resultado: OK
+
+4) TESTE C — Webhook loja
+----------------------------------------------------------------
+GET https://amajeste.com.br/api/webhooks/pagseguro
+HTTP 200
+{"ok":true,"service":"pagseguro-webhook"}
+Resultado: OK
+
+5) RESUMO
+----------------------------------------------------------------
+POST /checkouts → HTTP 201 OK (CHEC_331AF7DD-1E08-4645-8827-BBC3518061F8)
+GET  /checkouts/{id} → HTTP 200 OK
+Webhook health → HTTP 200 OK
+
+Fim do log (API Checkout).

@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from "next/server";
+import { adminAuth } from "@/lib/admin-auth";
+import {
+  getSalesOffer,
+  listOfferProductOptions,
+  saveSalesOffer,
+} from "@/lib/sales-hub";
+import {
+  actorFromSession,
+  requestIp,
+  writeAuditLog,
+} from "@/lib/audit-log";
+
+async function requireStaff() {
+  const session = await adminAuth();
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "STAFF")
+  ) {
+    return null;
+  }
+  return session;
+}
+
+export async function GET() {
+  if (!(await requireStaff())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+  const [offer, products] = await Promise.all([
+    getSalesOffer(),
+    listOfferProductOptions(50),
+  ]);
+  const product = offer.productId
+    ? products.find((p) => p.id === offer.productId) || null
+    : null;
+  return NextResponse.json({ offer, products, product });
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await requireStaff();
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => ({}));
+  const offer = await saveSalesOffer({
+    productId:
+      body.productId === null
+        ? null
+        : body.productId !== undefined
+          ? String(body.productId)
+          : undefined,
+    headline: body.headline !== undefined ? String(body.headline) : undefined,
+    dailyBudget:
+      body.dailyBudget !== undefined ? Number(body.dailyBudget) : undefined,
+    campaignSlug:
+      body.campaignSlug !== undefined ? String(body.campaignSlug) : undefined,
+    notes: body.notes !== undefined ? String(body.notes) : undefined,
+    startedAt: body.startedAt !== undefined ? String(body.startedAt) : undefined,
+  });
+
+  void writeAuditLog({
+    category: "marketing",
+    action: "update",
+    summary: `Oferta da semana atualizada${offer.productId ? "" : " (limpa)"}`,
+    entityType: "SalesOffer",
+    entityId: offer.productId || "none",
+    actor: actorFromSession(session),
+    ip: requestIp(req),
+  });
+
+  const products = await listOfferProductOptions(50);
+  const product = offer.productId
+    ? products.find((p) => p.id === offer.productId) || null
+    : null;
+
+  return NextResponse.json({ offer, product, products });
+}
