@@ -45,6 +45,8 @@ type Props = {
     holderName: string;
     holderTaxId: string;
   }) => Promise<void>;
+  /** Atualiza o total/promo do checkout assim que a parcela muda. */
+  onInstallmentsChange?: (installments: number) => void;
   pagseguroType?: PagBankPayType;
   onPagseguroTypeChange?: (t: PagBankPayType) => void;
   cardHolderName?: string;
@@ -137,6 +139,7 @@ export function CheckoutPaymentMethods({
   preferenceId,
   onCardPay,
   onPagBankCardPay,
+  onInstallmentsChange,
   pagseguroType = "CREDIT_CARD",
   onPagseguroTypeChange,
   cardHolderName = "",
@@ -335,9 +338,11 @@ export function CheckoutPaymentMethods({
                 ) : onPagBankCardPay ? (
                   <PagBankCardForm
                     publicKey={pagseguroPublicKey}
+                    amount={liveAmount}
                     busy={cardBusy}
                     defaultHolder={cardHolderName}
                     defaultTaxId={cardHolderTaxId}
+                    onInstallmentsChange={onInstallmentsChange}
                     onPay={onPagBankCardPay}
                   />
                 ) : null}
@@ -396,9 +401,11 @@ export function CheckoutPaymentMethods({
                   ) : onPagBankCardPay ? (
                     <PagBankCardForm
                       publicKey={pagseguroPublicKey}
+                      amount={liveAmount}
                       busy={cardBusy}
                       defaultHolder={cardHolderName}
                       defaultTaxId={cardHolderTaxId}
+                      onInstallmentsChange={onInstallmentsChange}
                       onPay={onPagBankCardPay}
                     />
                   ) : null

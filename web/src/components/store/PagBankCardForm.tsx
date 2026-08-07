@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { PaymentFlagsRow } from "@/components/store/PaymentFlags";
+import { formatBRL } from "@/lib/utils";
 
 declare global {
   interface Window {
@@ -27,9 +28,13 @@ const SDK_SRC =
 
 type Props = {
   publicKey: string;
+  /** Total da loja (já com/sem promoção conforme parcelas). */
+  amount?: number;
   busy?: boolean;
   defaultHolder?: string;
   defaultTaxId?: string;
+  /** Avisa o checkout na hora em que a cliente muda as parcelas (para atualizar promo/total). */
+  onInstallmentsChange?: (installments: number) => void;
   onPay: (data: {
     encryptedCard: string;
     installments: number;
@@ -88,9 +93,11 @@ function loadSdk(): Promise<void> {
 
 export function PagBankCardForm({
   publicKey,
+  amount = 0,
   busy,
   defaultHolder = "",
   defaultTaxId = "",
+  onInstallmentsChange,
   onPay,
 }: Props) {
   const [sdkReady, setSdkReady] = useState(false);
@@ -103,6 +110,12 @@ export function PagBankCardForm({
   const [installments, setInstallments] = useState(1);
   const [localError, setLocalError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  function changeInstallments(n: number) {
+    const next = Math.min(12, Math.max(1, n || 1));
+    setInstallments(next);
+    onInstallmentsChange?.(next);
+  }
 
   useEffect(() => {
     setHolder((h) => h || defaultHolder);
@@ -299,14 +312,29 @@ export function PagBankCardForm({
         <select
           className="input mt-1"
           value={installments}
-          onChange={(e) => setInstallments(Number(e.target.value) || 1)}
+          onChange={(e) => changeInstallments(Number(e.target.value) || 1)}
           disabled={disabled}
         >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>
-              {n === 1 ? "1x sem juros" : `${n}x com juros`}
-            </option>
-          ))}
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => {
+            const base = Math.max(0, amount);
+            const per = base > 0 ? Math.round((base / n) * 100) / 100 : 0;
+            if (n === 1) {
+              return (
+                <option key={n} value={n}>
+                  {base > 0
+                    ? `1x de ${formatBRL(base)} sem juros`
+                    : "1x sem juros"}
+                </option>
+              );
+            }
+            return (
+              <option key={n} value={n}>
+                {base > 0
+                  ? `${n}x de ${formatBRL(per)} · total loja ${formatBRL(base)} + juros PagBank`
+                  : `${n}x com juros PagBank`}
+              </option>
+            );
+          })}
         </select>
       </label>
 
@@ -322,9 +350,10 @@ export function PagBankCardForm({
         {disabled ? "Processando…" : "Pagar"}
       </button>
       <p className="text-[10px] text-muted leading-relaxed">
-        Somente 1x é sem juros na loja. A partir de 2x, os juros são os da
-        conta/adquirente PagBank. Os dados do cartão são criptografados no
-        navegador e não passam pelo servidor da loja.
+        Somente 1x é sem juros na loja. Em 2x ou mais, a loja cobra o valor
+        acima; o PagBank pode acrescentar juros no cartão (aparecem no extrato
+        da cliente, não na conta da loja). Os dados do cartão são criptografados
+        no navegador.
       </p>
     </form>
   );

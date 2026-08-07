@@ -805,18 +805,23 @@ export default function CheckoutPage() {
                     setMethod(id);
                     setPreferenceId(null);
                     setError("");
+                    setCardInstallments(1);
                   }}
                   amount={total}
                   publicKey={mpPublicKey}
                   pagseguroPublicKey={psPublicKey}
                   pagseguroType={psType}
-                  onPagseguroTypeChange={setPsType}
+                  onPagseguroTypeChange={(t) => {
+                    setPsType(t);
+                    setCardInstallments(1);
+                  }}
                   preferenceId={preferenceId}
                   cardBusy={loading}
                   cardHolderName={name}
                   cardHolderTaxId={cpf}
                   onCardPay={onCardPay}
                   onPagBankCardPay={onPagBankCardPay}
+                  onInstallmentsChange={setCardInstallments}
                 />
               )}
             </section>
@@ -923,6 +928,24 @@ export default function CheckoutPage() {
               <span>Total</span>
               <span>{formatBRL(total)}</span>
             </div>
+            {isCardMethod &&
+            cardInstallments > 1 &&
+            !matchedPromo &&
+            Math.max(sitePromo.percent, sitePromo.card1xOfferPercent) > 0 ? (
+              <p className="text-[11px] text-muted leading-relaxed">
+                A promoção de{" "}
+                {Math.max(sitePromo.percent, sitePromo.card1xOfferPercent)}% no
+                cartão vale apenas em 1x. Em {cardInstallments}x o total da loja
+                é {formatBRL(total)}. O PagBank pode somar juros no cartão da
+                cliente (não entram no valor que a loja recebe).
+              </p>
+            ) : isCardMethod && cardInstallments > 1 ? (
+              <p className="text-[11px] text-muted leading-relaxed">
+                Total da loja {formatBRL(total)}. Em {cardInstallments}x o
+                PagBank pode acrescentar juros no cartão (aparecem no extrato;
+                a loja recebe este valor bruto).
+              </p>
+            ) : null}
             {error && <p className="text-sm text-rose-dark">{error}</p>}
             {method === "credit_card" ||
             method === "pagseguro_card" ||
