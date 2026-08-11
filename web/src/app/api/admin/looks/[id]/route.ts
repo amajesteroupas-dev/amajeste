@@ -46,66 +46,97 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       look.coupon?.code ||
       (await generateUniqueCouponCode("MAJ"));
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const next = await tx.lookPost.update({
-        where: { id },
-        data: {
-          status: "APPROVED",
-          rewardCode: code,
-          rewardPercent,
-          rewardUsed: false,
-        },
-      });
-
-      await tx.discountCoupon.upsert({
-        where: { lookPostId: id },
-        create: {
-          code,
-          percent: rewardPercent,
-          customerId: look.customerId,
-          lookPostId: id,
-          used: false,
-        },
-        update: {
-          code,
-          percent: rewardPercent,
-          customerId: look.customerId,
-          used: false,
-          usedAt: null,
-          orderId: null,
-        },
-      });
-
-      // só incrementa créditos na primeira aprovação
-      if (!look.rewardCode) {
-        await tx.customer.update({
-          where: { id: look.customerId },
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        const next = await tx.lookPost.update({
+          where: { id },
           data: {
-            ambassadorDiscountPercent: { increment: rewardPercent },
-            tags: Array.from(
-              new Set([...(look.customer.tags || []), "embaixadora"])
-            ),
+            status: "APPROVED",
+            rewardCode: code,
+            rewardPercent,
+            rewardUsed: false,
           },
         });
-      }
 
-      return next;
+        await tx.discountCoupon.upsert({
+          where: { lookPostId: id },
+          create: {
+            code,
+            percent: rewardPercent,
+            customerId: look.customerId,
+            lookPostId: id,
+            used: false,
+          },
+          update: {
+            code,
+            percent: rewardPercent,
+            customerId: look.customerId,
+            used: false,
+            usedAt: null,
+            orderId: null,
+          },
+        });
+
+        // só incrementa créditos na primeira aprovação
+        if (!look.rewardCode) {
+          await tx.customer.update({
+            where: { id: look.customerId },
+            data: {
+              ambassadorDiscountPercent: { increment: rewardPercent },
+              tags: Array.from(
+                new Set([...(look.customer.tags || []), "embaixadora"])
+              ),
+            },
+          });
+        }
+
+        return next;
+      });
+
+      return NextResponse.json({
+        ok: true,
+        look: updated,
+        couponCode: code,
+        message: `Aprovado e publicado em /looks. Cupom ${code} (−${rewardPercent}%) gerado para a cliente.`,
+      });
+    } catch (e) {
+      console.error("[admin/looks] approve failed", id, e);
+      const detail =
+        e instanceof Error ? e.message : "Erro ao aprovar look / gerar cupom";
+      return NextResponse.json(
+        {
+          error: `Não foi possível aprovar (o look continua pendente). ${detail}`,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  try {
+    const updated = await prisma.lookPost.update({
+      where: { id },
+      data: { status: status as "PENDING" | "APPROVED" | "REJECTED" },
     });
-
     return NextResponse.json({
       ok: true,
       look: updated,
-      couponCode: code,
-      message: `Aprovado. Cupom ${code} (−${rewardPercent}%) gerado para a cliente.`,
+      message:
+        status === "APPROVED"
+          ? "Look já estava aprovado — permanece publicado em /looks."
+          : undefined,
     });
+  } catch (e) {
+    console.error("[admin/looks] status update failed", id, e);
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : "Não foi possível atualizar o status do look.",
+      },
+      { status: 500 }
+    );
   }
-
-  const updated = await prisma.lookPost.update({
-    where: { id },
-    data: { status: status as "PENDING" | "APPROVED" | "REJECTED" },
-  });
-
-  return NextResponse.json({ ok: true, look: updated });
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {

@@ -23,7 +23,7 @@ export default async function AdminLooksPage({
       ? undefined
       : (filter as "PENDING" | "APPROVED" | "REJECTED");
 
-  const [looks, pendingCount, coupons] = await Promise.all([
+  const [looks, pendingCount, approvedCount, coupons] = await Promise.all([
     prisma.lookPost.findMany({
       where: statusFilter ? { status: statusFilter } : undefined,
       orderBy: { createdAt: "desc" },
@@ -34,6 +34,7 @@ export default async function AdminLooksPage({
       },
     }),
     prisma.lookPost.count({ where: { status: "PENDING" } }),
+    prisma.lookPost.count({ where: { status: "APPROVED" } }),
     prisma.discountCoupon.findMany({
       orderBy: { createdAt: "desc" },
       take: 40,
@@ -46,7 +47,7 @@ export default async function AdminLooksPage({
 
   const tabs = [
     { key: "PENDING", label: `Pendentes (${pendingCount})` },
-    { key: "APPROVED", label: "Aprovados" },
+    { key: "APPROVED", label: `Aprovados (${approvedCount})` },
     { key: "REJECTED", label: "Rejeitados" },
     { key: "ALL", label: "Todos" },
   ];
@@ -56,13 +57,18 @@ export default async function AdminLooksPage({
       <h1 className="text-3xl mb-2" style={{ fontFamily: "var(--font-display)" }}>
         Looks & cupons
       </h1>
-      <p className="text-sm text-muted mb-6 max-w-2xl">
-        Aprove os looks das clientes. Ao aprovar, o sistema gera um cupom único
-        de 5% automaticamente. Looks aprovados aparecem em{" "}
+      <p className="text-sm text-muted mb-2 max-w-2xl">
+        Aprove os looks das clientes. Ao escolher{" "}
+        <strong>Aprovar (publicar na galeria)</strong>, o look entra em{" "}
         <Link href="/looks" className="underline" target="_blank">
           /looks
-        </Link>
-        .
+        </Link>{" "}
+        e o sistema gera um cupom único de 5%.
+      </p>
+      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 px-3 py-2 mb-6 max-w-2xl">
+        <strong>Consentimento Aceito</strong> só confirma que a cliente autorizou
+        o uso da foto — <strong>não publica</strong>. Para aparecer na Galeria
+        Majesté, o status precisa ser <strong>Aprovado</strong>.
       </p>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -171,9 +177,22 @@ export default async function AdminLooksPage({
                     )}
                   </td>
                   <td>
-                    <span className="badge">
+                    <span
+                      className={`badge ${
+                        l.status === "APPROVED"
+                          ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                          : l.status === "REJECTED"
+                            ? "bg-rose-50 text-rose-900 border border-rose-200"
+                            : ""
+                      }`}
+                    >
                       {STATUS_LABEL[l.status] || l.status}
                     </span>
+                    {l.status === "APPROVED" ? (
+                      <div className="text-[11px] text-emerald-800 mt-1">
+                        Visível em /looks
+                      </div>
+                    ) : null}
                   </td>
                   <td>
                     <LookStatusForm id={l.id} status={l.status} />
