@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueCouponCode } from "@/lib/coupon-code";
+import { LOOK_REWARD_PERCENT } from "@/lib/look-reward";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   // Aprovar: gera cupom único se ainda não tiver
   if (status === "APPROVED" && look.status !== "APPROVED") {
-    const rewardPercent = look.rewardPercent || 5;
+    const rewardPercent = LOOK_REWARD_PERCENT;
     const code =
       look.rewardCode ||
       look.coupon?.code ||

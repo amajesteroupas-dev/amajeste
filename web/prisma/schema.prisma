@@ -389,7 +389,7 @@ model LookPost {
   productName   String?
   status        LookStatus      @default(PENDING)
   /// % de desconto concedido ao aprovar (ex: 5)
-  rewardPercent Float           @default(5)
+  rewardPercent Float           @default(10)
   rewardCode    String?         @unique
   rewardUsed    Boolean         @default(false)
   /// Aceite do termo de consentimento de imagem (por envio)
@@ -408,7 +408,7 @@ model LookPost {
 model DiscountCoupon {
   id         String    @id @default(cuid())
   code       String    @unique
-  percent    Float     @default(5)
+  percent    Float     @default(10)
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lookPostId String?   @unique

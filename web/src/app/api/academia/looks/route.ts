@@ -6,6 +6,7 @@ import {
   LOOK_IMAGE_CONSENT_VERSION,
   clientIpFromRequest,
 } from "@/lib/look-image-consent";
+import { LOOK_REWARD_PERCENT } from "@/lib/look-reward";
 
 /** Lista looks do cliente logado */
 export async function GET() {
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       caption: caption.slice(0, 800),
       productName: product.name,
       status: "PENDING",
-      rewardPercent: 5,
+      rewardPercent: LOOK_REWARD_PERCENT,
       imageConsentAcceptedAt: new Date(),
       imageConsentVersion: LOOK_IMAGE_CONSENT_VERSION,
       imageConsentIp: clientIpFromRequest(req),
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
     createdAt: look.createdAt.toISOString(),
     updatedAt: look.updatedAt.toISOString(),
     message:
-      "Look enviado! Assim que a Majesté aprovar, você recebe um cupom exclusivo de 5%.",
+      "Look enviado! Assim que a Majesté aprovar, você recebe um cupom exclusivo de 10%.",
   });
 }
 

@@ -121,7 +121,7 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
     }
     setMsg(
       data.message ||
-        "Look enviado! Assim que a equipe aprovar, você recebe o cupom de Influence (5%)."
+        "Look enviado! Assim que a equipe aprovar, você recebe o cupom de Influence (10%)."
     );
     setProductName("");
     setCaption("");
@@ -164,9 +164,9 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
           <p className="text-sm text-[#5c534c] mb-5 leading-relaxed">
             Você cria conteúdo. A Majesté te recompensa. Publique um look com
             peça da marca, inspire a comunidade e, após aprovação, receba um{" "}
-            <strong>cupom exclusivo de 5%</strong> — um código novo a cada look
-            aprovado. Ideal para quem quer crescer como creator e vestir
-            presença.
+            <strong>cupom exclusivo de 10%</strong> — um código novo a cada look
+            aprovado. O cupom não acumula com o desconto do Pix (fica só os 10%).
+            Ideal para quem quer crescer como creator e vestir presença.
           </p>
 
           <form onSubmit={onSubmit} className="space-y-4">

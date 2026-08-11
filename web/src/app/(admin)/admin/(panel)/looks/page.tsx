@@ -63,7 +63,7 @@ export default async function AdminLooksPage({
         <Link href="/looks" className="underline" target="_blank">
           /looks
         </Link>{" "}
-        e o sistema gera um cupom único de 5%.
+        e o sistema gera um cupom único de 10% (não acumula com o 5% do Pix).
       </p>
       <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 px-3 py-2 mb-6 max-w-2xl">
         <strong>Consentimento Aceito</strong> só confirma que a cliente autorizou

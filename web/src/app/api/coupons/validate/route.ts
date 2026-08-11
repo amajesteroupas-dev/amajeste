@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer";
+import { lookRewardPercent } from "@/lib/look-reward";
 
 /** Valida cupom de look / embaixadora */
 export async function POST(req: NextRequest) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         code,
-        percent: look.rewardPercent || 5,
+        percent: lookRewardPercent(look.rewardPercent),
         lookPostId: look.id,
       });
     }
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     code: coupon.code,
-    percent: coupon.percent,
+    percent: lookRewardPercent(coupon.percent),
     lookPostId: coupon.lookPostId,
   });
 }

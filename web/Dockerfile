@@ -29,4 +29,4 @@ COPY --from=builder /app/scripts ./scripts
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads /app/.next
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && node scripts/seed-if-empty.js && npm start"]
+CMD ["sh", "-c", "npx prisma db push && node scripts/seed-if-empty.js && node scripts/sync-look-rewards.js && npm start"]

@@ -30,6 +30,7 @@ import {
   resolveCheckoutPromotion,
 } from "@/lib/promotion-settings";
 import { applyPriceAdjust } from "@/lib/promotion-pricing";
+import { lookRewardPercent } from "@/lib/look-reward";
 import { defaultPayment } from "@/lib/site";
 import { checkoutSuccessPath } from "@/lib/order-access";
 import { isLocalShippingId } from "@/lib/shipping";
@@ -239,6 +240,7 @@ export async function POST(req: NextRequest) {
     let appliedCouponCode: string | null = null;
     let couponId: string | null = null;
     let lookPostIdForCoupon: string | null = null;
+    let couponPercentApplied = 0;
     const couponCode = couponRaw
       ? String(couponRaw).trim().toUpperCase().replace(/\s+/g, "")
       : "";
@@ -264,7 +266,9 @@ export async function POST(req: NextRequest) {
             { status: 403 }
           );
         }
-        discount = Math.round(subtotal * (coupon.percent / 100) * 100) / 100;
+        couponPercentApplied = lookRewardPercent(coupon.percent);
+        discount =
+          Math.round(subtotal * (couponPercentApplied / 100) * 100) / 100;
         appliedCouponCode = coupon.code;
         couponId = coupon.id;
         lookPostIdForCoupon = coupon.lookPostId;
@@ -276,12 +280,13 @@ export async function POST(req: NextRequest) {
           !look ||
           look.status !== "APPROVED" ||
           look.rewardUsed ||
-          (look.customerId !== customer.id)
+          look.customerId !== customer.id
         ) {
           return NextResponse.json({ error: "Cupom inválido" }, { status: 400 });
         }
+        couponPercentApplied = lookRewardPercent(look.rewardPercent);
         discount =
-          Math.round(subtotal * ((look.rewardPercent || 5) / 100) * 100) / 100;
+          Math.round(subtotal * (couponPercentApplied / 100) * 100) / 100;
         appliedCouponCode = look.rewardCode;
         lookPostIdForCoupon = look.id;
       }
@@ -289,13 +294,14 @@ export async function POST(req: NextRequest) {
 
     const breakdown = computeCheckoutDiscounts({
       subtotal,
-      couponPercent: 0,
+      couponPercent: couponPercentApplied,
       isPix: isPixMethod,
       isCard: isCardMethod,
       installments: cardInstallments,
       matchedPromo,
       basePixPercent: defaultPayment.pixDiscountPercent,
     });
+    // Cupom já calculado em `discount`; site/pix vêm do breakdown (0 se houver cupom)
     const siteDiscount = breakdown.siteDiscount;
     const pixExtraDiscount = breakdown.pixDiscount;
     const totalDiscountAmount =

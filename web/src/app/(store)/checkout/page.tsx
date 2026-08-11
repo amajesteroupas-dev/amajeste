@@ -886,7 +886,7 @@ export default function CheckoutPage() {
             ) : null}
             {couponDiscount > 0 ? (
               <div className="flex justify-between text-sm text-[#5a7a4a]">
-                <span>Desconto ({couponApplied?.code})</span>
+                <span>Cupom ({couponApplied?.code}) · sem acumular Pix</span>
                 <span>−{formatBRL(couponDiscount)}</span>
               </div>
             ) : null}

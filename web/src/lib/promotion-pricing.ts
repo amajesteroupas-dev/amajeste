@@ -170,6 +170,7 @@ export function listLivePromotions(
 /**
  * Descontos sobre o subtotal.
  * Promo de site (qualquer escopo) no Pix absorve o 5% base — não soma.
+ * Cupom (ex.: look Influence) é exclusivo: não acumula com Pix nem promo do site.
  */
 export function computeCheckoutDiscounts(opts: {
   subtotal: number;
@@ -187,6 +188,7 @@ export function computeCheckoutDiscounts(opts: {
 }) {
   const sub = Math.max(0, opts.subtotal);
   const basePix = opts.basePixPercent ?? defaultPayment.pixDiscountPercent;
+  const hasCoupon = Boolean(opts.couponPercent && opts.couponPercent > 0);
 
   const matched =
     opts.matchedPromo ??
@@ -205,21 +207,21 @@ export function computeCheckoutDiscounts(opts: {
       : null);
 
   const siteDiscount =
-    matched && matched.percent > 0
+    !hasCoupon && matched && matched.percent > 0
       ? roundMoney(sub * (matched.percent / 100))
       : 0;
 
-  const couponDiscount =
-    opts.couponPercent && opts.couponPercent > 0
-      ? roundMoney(sub * (opts.couponPercent / 100))
-      : 0;
+  const couponDiscount = hasCoupon
+    ? roundMoney(sub * ((opts.couponPercent || 0) / 100))
+    : 0;
 
   const promoCoversPix =
     Boolean(matched) &&
     opts.isPix &&
     (matched!.scope === "all" || matched!.scope === "pix");
 
-  const applyPixExtra = opts.isPix && basePix > 0 && !promoCoversPix;
+  const applyPixExtra =
+    opts.isPix && basePix > 0 && !promoCoversPix && !hasCoupon;
 
   const pixDiscount = applyPixExtra
     ? roundMoney(sub * (basePix / 100))
