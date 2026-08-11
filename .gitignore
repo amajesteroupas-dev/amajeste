@@ -14,5 +14,3 @@ nginx/certs/*.pem
 *.log
 .DS_Store
 woo-products.json
-# Ignore workflows until token has 'workflow' scope
-.github/workflows/

@@ -1,5 +1,11 @@
 # Hostinger KVM 4 — checklist de go-live
 
+## Deploy automático (recomendado)
+
+Depois do primeiro go-live, use **GitHub Actions**: `git push` na `main` atualiza o VPS sozinho.
+
+Guia dos secrets e chave SSH: [github-actions/README.md](./github-actions/README.md)
+
 ## Pré-requisitos no VPS
 
 - Ubuntu 22.04+
