@@ -61,7 +61,13 @@ export function OrderMelhorEnvioPanel({
       <p className="text-sm text-muted">
         Frete: {shippingMethod || "—"}
         {shippingServiceId ? (
-          <span className="text-xs"> · serviço {shippingServiceId}</span>
+          <span className="text-xs">
+            {" "}
+            · serviço {shippingServiceId}
+            {String(shippingServiceId).startsWith("mb-")
+              ? " (etiqueta via Melhor Envio)"
+              : ""}
+          </span>
         ) : null}
       </p>
 

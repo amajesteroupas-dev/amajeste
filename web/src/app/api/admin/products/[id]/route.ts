@@ -159,6 +159,16 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         : {}),
     },
   });
+
+  // Preço do produto é a fonte da verdade no admin — limpa overrides
+  // antigos das variantes (ex.: import Woo) para vitrine/PDP/checkout baterem.
+  if (body.price !== undefined) {
+    await prisma.productVariant.updateMany({
+      where: { productId: id },
+      data: { price: null },
+    });
+  }
+
   void writeAuditLog({
     category: "products",
     action: "update",
@@ -170,6 +180,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       price: product.price,
       active: product.active,
       featured: product.featured,
+      variantPricesCleared: body.price !== undefined,
     },
     actor: actorFromSession(session),
     ip: requestIp(req),

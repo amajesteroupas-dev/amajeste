@@ -43,7 +43,9 @@ export function CustomerRegisterForm() {
     const form = new FormData(e.currentTarget);
     const payload = {
       name: name || String(form.get("name") || ""),
-      email: String(form.get("email") || ""),
+      email: String(form.get("email") || "")
+        .trim()
+        .toLowerCase(),
       password: String(form.get("password") || ""),
       phone: String(form.get("phone") || ""),
       cpf,

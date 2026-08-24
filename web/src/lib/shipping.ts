@@ -54,6 +54,37 @@ export function isLocalShippingId(id?: string | null) {
   return id === LOCAL_SHIPPING_ID;
 }
 
+/** IDs oficiais Correios no Melhor Envio (produção). */
+export const ME_SERVICE_PAC = 1;
+export const ME_SERVICE_SEDEX = 2;
+
+/**
+ * Converte o serviço gravado no pedido (Melhor Envio numérico, Manda Bem
+ * `mb-pac`/`mb-sedex`, ou mock `pac`/`sedex`) no ID usado para gerar etiqueta.
+ */
+export function resolveMelhorEnvioServiceId(
+  shippingServiceId?: string | null,
+  shippingMethod?: string | null
+): number | null {
+  const sid = String(shippingServiceId || "").trim();
+  if (/^\d+$/.test(sid)) {
+    const n = Number(sid);
+    return n > 0 ? n : null;
+  }
+
+  const key = sid.toLowerCase();
+  if (key === "mb-pac" || key === "pac") return ME_SERVICE_PAC;
+  if (key === "mb-sedex" || key === "sedex") return ME_SERVICE_SEDEX;
+
+  const method = String(shippingMethod || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  if (/\bsedex\b/.test(method)) return ME_SERVICE_SEDEX;
+  if (/\bpac\b/.test(method)) return ME_SERVICE_PAC;
+  return null;
+}
+
 /** Só Correios PAC e SEDEX (exclui Mini Envios, SEDEX Hoje, outras transportadoras). */
 export function isCorreiosPacOrSedex(name: string, company: string) {
   const c = (company || "").toLowerCase();

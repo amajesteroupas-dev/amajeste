@@ -121,7 +121,7 @@ function escapeAttr(s: string) {
   return escapeHtml(s).replace(/'/g, "&#39;");
 }
 
-export async function sendMarketingEmail(opts: {
+export async function sendMail(opts: {
   to: string;
   subject: string;
   html: string;
@@ -140,5 +140,29 @@ export async function sendMarketingEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+  });
+}
+
+export async function sendMarketingEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  return sendMail(opts);
+}
+
+export function buildPasswordResetHtml(opts: {
+  name: string;
+  resetUrl: string;
+  siteUrl: string;
+}) {
+  const site = opts.siteUrl.replace(/\/$/, "");
+  const first = (opts.name || "Maravilhosa").trim().split(/\s+/)[0] || "Maravilhosa";
+  return buildCampaignHtml({
+    title: `${first}, vamos redefinir sua senha`,
+    body: `Recebemos um pedido para trocar a senha da sua conta Majesté.\n\nToque no botão abaixo. O link vale por 1 hora.\n\nSe você não pediu isso, ignore este e-mail — sua senha continua a mesma.`,
+    ctaLabel: "Redefinir senha",
+    ctaHref: opts.resetUrl,
+    siteUrl: site,
   });
 }

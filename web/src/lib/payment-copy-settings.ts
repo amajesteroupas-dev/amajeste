@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_PAYMENT_COPY,
+  isBarePercentCopy,
   type PaymentCopySettings,
 } from "@/lib/payment-copy";
 
@@ -18,17 +19,25 @@ const KEY = "paymentCopyJson";
 function sanitizeCopy(
   parsed: Partial<PaymentCopySettings>
 ): PaymentCopySettings {
+  const pixHeadline =
+    parsed.pixHeadline?.trim() || DEFAULT_PAYMENT_COPY.pixHeadline;
+  const pixHeadlinePromo =
+    parsed.pixHeadlinePromo?.trim() ||
+    DEFAULT_PAYMENT_COPY.pixHeadlinePromo;
+
   return {
     productCardLine:
       parsed.productCardLine?.trim() || DEFAULT_PAYMENT_COPY.productCardLine,
     // Vazio é intencional: esconde a linha do card na promoção.
     productCardLinePromo: parsed.productCardLinePromo?.trim() ?? "",
-    pixHeadline:
-      parsed.pixHeadline?.trim() || DEFAULT_PAYMENT_COPY.pixHeadline,
+    // Evita título só com "15%" / "{percent}%" na caixa do produto.
+    pixHeadline: isBarePercentCopy(pixHeadline)
+      ? DEFAULT_PAYMENT_COPY.pixHeadline
+      : pixHeadline,
     pixDetail: parsed.pixDetail?.trim() || DEFAULT_PAYMENT_COPY.pixDetail,
-    pixHeadlinePromo:
-      parsed.pixHeadlinePromo?.trim() ||
-      DEFAULT_PAYMENT_COPY.pixHeadlinePromo,
+    pixHeadlinePromo: isBarePercentCopy(pixHeadlinePromo)
+      ? DEFAULT_PAYMENT_COPY.pixHeadlinePromo
+      : pixHeadlinePromo,
     pixDetailPromo:
       parsed.pixDetailPromo?.trim() || DEFAULT_PAYMENT_COPY.pixDetailPromo,
     footerPaymentLine:

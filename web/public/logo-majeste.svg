@@ -1,8 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 70" fill="none">
-  <g fill="#C9A24A">
-    <path d="M140 6l10 14 14-8-4 16 14 8-16 2-4 16-8-14-16 6 8-14-14-8 16-2z"/>
-    <path d="M118 22h44v3H118z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 90" fill="none" role="img" aria-label="Majesté Fitness">
+  <defs>
+    <linearGradient id="g" x1="40" y1="0" x2="240" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f7ecc0"/>
+      <stop offset="40%" stop-color="#d4af5a"/>
+      <stop offset="100%" stop-color="#8a6a28"/>
+    </linearGradient>
+    <linearGradient id="gs" x1="140" y1="0" x2="140" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff4cc"/>
+      <stop offset="100%" stop-color="#c9a24a"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(90 0) scale(0.55)">
+    <path d="M14 58 H86" stroke="url(#g)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M22 63 H78" stroke="url(#g)" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+    <path d="M22 56 L30 18 L42 40" stroke="url(#g)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M78 56 L70 18 L58 40" stroke="url(#g)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M50 10 L62 34 L50 54 L38 34 Z" stroke="url(#gs)" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+    <path d="M30 18 L50 54 L70 18" stroke="url(#g)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>
+    <circle cx="30" cy="16.5" r="3.6" fill="url(#gs)"/>
+    <circle cx="50" cy="8.5" r="4" fill="url(#gs)"/>
+    <circle cx="70" cy="16.5" r="3.6" fill="url(#gs)"/>
   </g>
-  <text x="140" y="52" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#C9A24A" letter-spacing="4">Majesté</text>
-  <text x="140" y="66" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#C9A24A" letter-spacing="3">BY THAIS</text>
+  <text x="140" y="62" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#C9A24A" letter-spacing="2">Majesté</text>
+  <text x="140" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#a8842f" letter-spacing="4" font-weight="600">FITNESS</text>
 </svg>

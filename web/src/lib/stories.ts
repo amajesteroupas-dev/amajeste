@@ -4,6 +4,7 @@ import { resolveVideoPlayback } from "@/lib/videos";
 export const STORIES_MAX_KEY = "storiesMaxActive";
 /** Questionário único no fim de toda a sequência de stories. */
 export const STORIES_SURVEY_KEY = "storiesSurveyQuestions";
+export const STORIES_SURVEY_ENABLED_KEY = "storiesSurveyEnabled";
 export const DEFAULT_STORIES_MAX = 5;
 
 export type StoryQuestion = {
@@ -169,6 +170,29 @@ function questionsFromSettingValue(raw: string | null | undefined): StoryQuestio
     /* ignore */
   }
   return parseStoryQuestions(null, raw);
+}
+
+/** Se false, nenhuma pergunta aparece no fim dos stories (global + por vídeo). */
+export async function getStoriesSurveyEnabled(): Promise<boolean> {
+  try {
+    const row = await prisma.siteSetting.findUnique({
+      where: { key: STORIES_SURVEY_ENABLED_KEY },
+    });
+    if (row?.value === "0" || row?.value === "false") return false;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+export async function setStoriesSurveyEnabled(enabled: boolean) {
+  const value = enabled ? "1" : "0";
+  await prisma.siteSetting.upsert({
+    where: { key: STORIES_SURVEY_ENABLED_KEY },
+    create: { key: STORIES_SURVEY_ENABLED_KEY, value },
+    update: { value },
+  });
+  return enabled;
 }
 
 /** Questionário global (uma vez no fim de todos os vídeos). */

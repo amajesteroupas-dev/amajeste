@@ -10,7 +10,12 @@ import { SitePromoProvider } from "@/components/store/SitePromoContext";
 import { SiteVisitTracker } from "@/components/store/SiteVisitTracker";
 import { CartAbandonTracker } from "@/components/store/CartAbandonTracker";
 import { MetaPixel } from "@/components/store/MetaPixel";
-import { getActiveStories, getGlobalStoriesSurvey } from "@/lib/stories";
+import { ImpersonationBanner } from "@/components/store/ImpersonationBanner";
+import {
+  getActiveStories,
+  getGlobalStoriesSurvey,
+  getStoriesSurveyEnabled,
+} from "@/lib/stories";
 import {
   getActiveSitePromotion,
   getLivePromotions,
@@ -26,15 +31,24 @@ export default async function StoreLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [stories, surveyQuestions, promo, paymentCopy, promotions, metaPixel] =
-    await Promise.all([
-      getActiveStories(),
-      getGlobalStoriesSurvey(),
-      getActiveSitePromotion(),
-      getPaymentCopySettings(),
-      getLivePromotions(),
-      getMetaPixelSettings(),
-    ]);
+  const [
+    stories,
+    surveyQuestionsRaw,
+    surveyEnabled,
+    promo,
+    paymentCopy,
+    promotions,
+    metaPixel,
+  ] = await Promise.all([
+    getActiveStories(),
+    getGlobalStoriesSurvey(),
+    getStoriesSurveyEnabled(),
+    getActiveSitePromotion(),
+    getPaymentCopySettings(),
+    getLivePromotions(),
+    getMetaPixelSettings(),
+  ]);
+  const surveyQuestions = surveyEnabled ? surveyQuestionsRaw : [];
 
   const pixOffer =
     pickBestPromotion(promotions, {
@@ -82,11 +96,16 @@ export default async function StoreLayout({
         <SiteVisitTracker />
         <CartAbandonTracker />
         <MetaPixel pixelId={metaPixel.pixelId} />
+        <ImpersonationBanner />
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />
         <WhatsAppFloat />
-        <LiveVideoFloat stories={stories} surveyQuestions={surveyQuestions} />
+        <LiveVideoFloat
+          stories={stories}
+          surveyQuestions={surveyQuestions}
+          surveyEnabled={surveyEnabled}
+        />
         <LiveMiniPlayer />
         <CookieConsent />
       </SitePromoProvider>

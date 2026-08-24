@@ -69,6 +69,9 @@ export default function CheckoutPage() {
     percent: number;
   } | null>(null);
   const [couponMsg, setCouponMsg] = useState("");
+  const [myCoupons, setMyCoupons] = useState<
+    { code: string; percent: number }[]
+  >([]);
   const [payMethods, setPayMethods] = useState<
     { id: string; label: string; description: string }[]
   >([]);
@@ -78,6 +81,8 @@ export default function CheckoutPage() {
   /** Parcelas usadas para calcular desconto de cartão (preview + pedido). */
   const [cardInstallments, setCardInstallments] = useState(1);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  /** Evita ir ao carrinho vazio enquanto redireciona para Pix/cartão (sucesso). */
+  const [leavingCheckout, setLeavingCheckout] = useState(false);
   /** Visitante escolheu comprar sem login */
   const [guestChosen, setGuestChosen] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -132,8 +137,10 @@ export default function CheckoutPage() {
   const showCheckoutForm = isCustomer || guestChosen;
 
   useEffect(() => {
-    if (items.length === 0 && !preferenceId) router.replace("/carrinho");
-  }, [items.length, preferenceId, router]);
+    if (items.length === 0 && !preferenceId && !leavingCheckout) {
+      router.replace("/carrinho");
+    }
+  }, [items.length, preferenceId, leavingCheckout, router]);
 
   useEffect(() => {
     (async () => {
@@ -177,6 +184,26 @@ export default function CheckoutPage() {
       }
     }
     prefills();
+  }, [isCustomer]);
+
+  useEffect(() => {
+    async function loadCoupons() {
+      if (!isCustomer) {
+        setMyCoupons([]);
+        return;
+      }
+      const res = await fetch("/api/coupons");
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = Array.isArray(data.coupons) ? data.coupons : [];
+      setMyCoupons(
+        list.map((c: { code: string; percent: number }) => ({
+          code: String(c.code),
+          percent: Number(c.percent) || 0,
+        }))
+      );
+    }
+    loadCoupons();
   }, [isCustomer]);
 
   async function lookupCep(zipOverride?: string) {
@@ -289,10 +316,11 @@ export default function CheckoutPage() {
   const loginHref = `/entrar?callbackUrl=${encodeURIComponent("/checkout")}`;
   const registerHref = `/cadastro?callbackUrl=${encodeURIComponent("/checkout")}`;
 
-  async function applyCoupon() {
+  async function applyCoupon(codeOverride?: string) {
     setCouponMsg("");
-    const code = couponInput.trim().toUpperCase();
+    const code = (codeOverride ?? couponInput).trim().toUpperCase();
     if (!code) return;
+    setCouponInput(code);
     const res = await fetch("/api/coupons/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -317,6 +345,11 @@ export default function CheckoutPage() {
     pagseguroType?: PagBankPayType;
     holderName?: string;
     holderTaxId?: string;
+    interestTotal?: number;
+    interestTotalCents?: number;
+    interestInstallments?: number;
+    cardBin?: string;
+    maxInterestFree?: number;
   }) {
     if (extra?.installments != null) {
       setCardInstallments(Number(extra.installments) || 1);
@@ -397,13 +430,21 @@ export default function CheckoutPage() {
         return;
       }
 
-      clear();
-
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      } else {
-        router.push(`/checkout/sucesso?order=${data.orderNumber}`);
+      const successUrl =
+        (typeof data.redirectUrl === "string" && data.redirectUrl) ||
+        (data.orderNumber
+          ? `/checkout/sucesso?order=${encodeURIComponent(String(data.orderNumber))}`
+          : "");
+      if (!successUrl) {
+        throw new Error("Pedido criado, mas sem link de confirmação.");
       }
+
+      // Marca saída ANTES de limpar o carrinho — senão o useEffect manda
+      // para /carrinho e ganha a corrida do redirect (comum no mobile).
+      setLeavingCheckout(true);
+      clear();
+      window.location.assign(successUrl);
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
       throw err;
@@ -456,6 +497,10 @@ export default function CheckoutPage() {
     installments: number;
     holderName: string;
     holderTaxId: string;
+    interestTotal?: number;
+    interestTotalCents?: number;
+    interestInstallments?: number;
+    cardBin?: string;
   }) {
     await placeOrder({
       pagseguroType: "CREDIT_CARD",
@@ -463,10 +508,19 @@ export default function CheckoutPage() {
       installments: data.installments,
       holderName: data.holderName,
       holderTaxId: data.holderTaxId,
+      interestTotal: data.interestTotal,
+      interestTotalCents: data.interestTotalCents,
+      interestInstallments: data.interestInstallments,
+      cardBin: data.cardBin,
+      maxInterestFree:
+        matchedPromo?.cardInstallmentsMax != null &&
+        matchedPromo.cardInstallmentsMax > 0
+          ? matchedPromo.cardInstallmentsMax
+          : 1,
     });
   }
 
-  if (items.length === 0 && !preferenceId) return null;
+  if (items.length === 0 && !preferenceId && !leavingCheckout) return null;
 
   return (
     <div className="container-maj py-12">
@@ -819,6 +873,12 @@ export default function CheckoutPage() {
                   cardBusy={loading}
                   cardHolderName={name}
                   cardHolderTaxId={cpf}
+                  maxInterestFree={
+                    sitePromo.interestFreeInstallments &&
+                    sitePromo.interestFreeInstallments > 0
+                      ? sitePromo.interestFreeInstallments
+                      : 1
+                  }
                   onCardPay={onCardPay}
                   onPagBankCardPay={onPagBankCardPay}
                   onInstallmentsChange={setCardInstallments}
@@ -870,15 +930,11 @@ export default function CheckoutPage() {
                   {matchedPromo.scope === "pix"
                     ? " · Pix"
                     : matchedPromo.scope === "card"
-                      ? matchedPromo.cardInstallmentsMax === 1
-                        ? " · cartão 1x"
-                        : matchedPromo.cardInstallmentsMax
-                          ? ` · cartão até ${matchedPromo.cardInstallmentsMax}x`
-                          : " · cartão"
+                      ? " · cartão"
                       : isPixMethod
                         ? " · Pix incluso"
-                        : matchedPromo.cardInstallmentsMax === 1
-                          ? " · cartão 1x"
+                        : isCardMethod
+                          ? " · cartão"
                           : ""}
                 </span>
                 <span>−{formatBRL(siteDiscount)}</span>
@@ -897,19 +953,51 @@ export default function CheckoutPage() {
               </div>
             ) : null}
             <div className="space-y-2 pt-1">
+              {myCoupons.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted">
+                    {myCoupons.length === 1
+                      ? "Seu cupom"
+                      : "Seus cupons — escolha um"}
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {myCoupons.map((c) => {
+                      const selected = couponApplied?.code === c.code;
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => applyCoupon(c.code)}
+                          className={`text-left text-xs border px-3 py-2 transition ${
+                            selected
+                              ? "border-[#5a7a4a] bg-[#5a7a4a]/10 text-[#3d5434]"
+                              : "border-line hover:border-ink/40"
+                          }`}
+                        >
+                          <span className="font-mono font-semibold">{c.code}</span>
+                          <span className="text-muted"> · −{c.percent}% no subtotal</span>
+                          {selected ? " · aplicado" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="flex gap-2">
                 <input
                   value={couponInput}
                   onChange={(e) =>
                     setCouponInput(e.target.value.toUpperCase())
                   }
-                  placeholder="Cupom"
+                  placeholder={
+                    myCoupons.length > 0 ? "Outro cupom" : "Cupom"
+                  }
                   className="input !py-2 text-sm"
                 />
                 <button
                   type="button"
                   className="btn btn-outline !py-2 !px-3 text-xs shrink-0"
-                  onClick={applyCoupon}
+                  onClick={() => applyCoupon()}
                 >
                   Aplicar
                 </button>

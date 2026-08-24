@@ -175,18 +175,59 @@ export function PixFlag({ className, size = "md" }: FlagProps) {
   );
 }
 
+export type CardBrand = "visa" | "mastercard" | "elo" | "amex" | "hipercard";
+
+/** Detecta a bandeira pelos primeiros dígitos (BIN). */
+export function detectCardBrand(cardNumber: string): CardBrand | null {
+  const d = cardNumber.replace(/\D/g, "");
+  if (!d) return null;
+  if (/^3[47]/.test(d)) return "amex";
+  if (/^(606282|3841|6370|6375|6376)/.test(d)) return "hipercard";
+  // Elo (BINs comuns no Brasil) — antes de Visa/Master genéricos
+  if (
+    /^(401178|401179|431274|438935|451416|457393|457631|457632|504175|506699|5067|509|627780|636297|636368|650|6516|6550)/.test(
+      d
+    )
+  ) {
+    return "elo";
+  }
+  if (/^4/.test(d)) return "visa";
+  if (
+    /^5[1-5]/.test(d) ||
+    /^(222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)/.test(d)
+  ) {
+    return "mastercard";
+  }
+  return null;
+}
+
 export function PaymentFlagsRow({
   className,
   showPix = true,
   size = "md",
   /** Principais: Visa, Mastercard, Elo (+ Pix). Completo inclui Amex e Hipercard. */
   variant = "full",
+  /** Destaca a bandeira detectada pelo número do cartão. */
+  activeBrand = null,
 }: {
   className?: string;
   showPix?: boolean;
   size?: "sm" | "md";
   variant?: "main" | "full";
+  activeBrand?: CardBrand | null;
 }) {
+  const brands: { id: CardBrand; node: ReactNode }[] = [
+    { id: "visa", node: <VisaFlag size={size} /> },
+    { id: "mastercard", node: <MastercardFlag size={size} /> },
+    { id: "elo", node: <EloFlag size={size} /> },
+  ];
+  if (variant === "full") {
+    brands.push(
+      { id: "amex", node: <AmexFlag size={size} /> },
+      { id: "hipercard", node: <HipercardFlag size={size} /> }
+    );
+  }
+
   return (
     <div
       className={`flex flex-wrap items-center ${
@@ -195,25 +236,25 @@ export function PaymentFlagsRow({
       role="list"
       aria-label="Formas de pagamento"
     >
-      <span role="listitem">
-        <VisaFlag size={size} />
-      </span>
-      <span role="listitem">
-        <MastercardFlag size={size} />
-      </span>
-      <span role="listitem">
-        <EloFlag size={size} />
-      </span>
-      {variant === "full" && (
-        <>
-          <span role="listitem">
-            <AmexFlag size={size} />
+      {brands.map(({ id, node }) => {
+        const active = activeBrand === id;
+        const dimmed = Boolean(activeBrand) && !active;
+        return (
+          <span
+            key={id}
+            role="listitem"
+            className={
+              active
+                ? "ring-2 ring-[#2a2420] ring-offset-1 rounded-[3px] scale-110 transition"
+                : dimmed
+                  ? "opacity-35 grayscale transition"
+                  : "transition"
+            }
+          >
+            {node}
           </span>
-          <span role="listitem">
-            <HipercardFlag size={size} />
-          </span>
-        </>
-      )}
+        );
+      })}
       {showPix && (
         <span role="listitem">
           <PixFlag size={size} />

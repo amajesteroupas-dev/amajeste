@@ -81,6 +81,9 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             paymentStatus: order.payment?.status,
             pixCode: pixCode || null,
             pixQrDataUrl,
+            reservedUntil: order.reservedUntil
+              ? order.reservedUntil.toISOString()
+              : null,
             boletoBarcode: order.payment?.boletoBarcode,
             boletoUrl: order.payment?.boletoUrl,
             localDeliveryWhatsapp,

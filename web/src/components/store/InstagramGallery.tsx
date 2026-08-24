@@ -32,7 +32,7 @@ function typeLabel(p: GalleryPost) {
   return "Foto";
 }
 
-/** Coroa dourada mínima — marca na moldura */
+/** Coroa dourada oficial — marca na moldura */
 function FrameCrown({
   className,
   gradId,
@@ -41,30 +41,52 @@ function FrameCrown({
   gradId: string;
 }) {
   return (
-    <svg className={className} viewBox="0 0 48 34" fill="none" aria-hidden>
+    <svg className={className} viewBox="0 0 100 72" fill="none" aria-hidden>
       <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="48" y2="34">
+        <linearGradient id={gradId} x1="8" y1="4" x2="92" y2="68">
           <stop offset="0%" stopColor="#f3e4b0" />
           <stop offset="45%" stopColor="#d8b45e" />
           <stop offset="100%" stopColor="#8a6a28" />
         </linearGradient>
       </defs>
       <path
-        d="M6 28 H42"
+        d="M14 58 H86"
         stroke={`url(#${gradId})`}
-        strokeWidth="1.4"
+        strokeWidth="2"
         strokeLinecap="round"
       />
       <path
-        d="M8 26 L14 12 L19 20 L24 6 L29 20 L34 12 L40 26"
+        d="M22 56 L30 18 L42 40"
         stroke={`url(#${gradId})`}
-        strokeWidth="1.35"
+        strokeWidth="2"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx="14" cy="11" r="1.7" fill={`url(#${gradId})`} />
-      <circle cx="24" cy="5" r="1.9" fill={`url(#${gradId})`} />
-      <circle cx="34" cy="11" r="1.7" fill={`url(#${gradId})`} />
+      <path
+        d="M78 56 L70 18 L58 40"
+        stroke={`url(#${gradId})`}
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path
+        d="M50 10 L62 34 L50 54 L38 34 Z"
+        stroke={`url(#${gradId})`}
+        strokeWidth="2"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M30 18 L50 54 L70 18"
+        stroke={`url(#${gradId})`}
+        strokeWidth="1.55"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        opacity="0.92"
+      />
+      <circle cx="30" cy="16.5" r="3.4" fill={`url(#${gradId})`} />
+      <circle cx="50" cy="8.5" r="3.8" fill={`url(#${gradId})`} />
+      <circle cx="70" cy="16.5" r="3.4" fill={`url(#${gradId})`} />
     </svg>
   );
 }

@@ -13,14 +13,17 @@ import {
 } from "lucide-react";
 import type { StoreStoryDTO, StoryQuestion } from "@/lib/stories";
 import { resolveVideoPlayback } from "@/lib/videos";
-import { whatsappUrl } from "@/lib/site";
+import { instagramUrl, whatsappUrl } from "@/lib/site";
 import { useLiveMiniPlayer } from "@/components/store/LiveMiniPlayerContext";
+import { InstagramIcon } from "@/components/store/InstagramIcon";
 import { WhatsAppIcon } from "@/components/store/WhatsAppIcon";
 
 type Props = {
   stories: StoreStoryDTO[];
   /** Questionário final único (todos os vídeos). */
   surveyQuestions?: StoryQuestion[];
+  /** Quando false, nenhuma pergunta aparece no fim da sequência. */
+  surveyEnabled?: boolean;
   open: boolean;
   onClose: () => void;
   initialIndex?: number;
@@ -42,12 +45,14 @@ function storyFrameSize() {
 export function StoriesPlayer({
   stories,
   surveyQuestions = [],
+  surveyEnabled = true,
   open,
   onClose,
   initialIndex = 0,
 }: Props) {
   const [index, setIndex] = useState(0);
-  const [muted, setMuted] = useState(false);
+  // Mobile Safari blocks autoplay with audio; start muted for reliable playback.
+  const [muted, setMuted] = useState(true);
   const [liked, setLiked] = useState(false);
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<"play" | "survey">("play");
@@ -58,12 +63,14 @@ export function StoriesPlayer({
   const [thanks, setThanks] = useState(false);
   const [size, setSize] = useState(storyFrameSize());
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const overlayReadyRef = useRef(false);
   const { startMini } = useLiveMiniPlayer();
 
   const story = stories[index] || null;
   const playback = story ? resolveVideoPlayback(story.videoUrl) : null;
 
   const surveyItems = useMemo(() => {
+    if (!surveyEnabled) return [];
     const items: {
       key: string;
       storyId: string;
@@ -110,7 +117,7 @@ export function StoriesPlayer({
       }
     }
     return items;
-  }, [stories, surveyQuestions]);
+  }, [stories, surveyQuestions, surveyEnabled]);
 
   const hasSurvey = surveyItems.length > 0;
 
@@ -126,6 +133,12 @@ export function StoriesPlayer({
     setSending(false);
     setLiked(false);
     setSize(storyFrameSize());
+    // iOS: ignora cliques no overlay imediatamente após abrir (evento da bolinha propaga)
+    overlayReadyRef.current = false;
+    const t = setTimeout(() => {
+      overlayReadyRef.current = true;
+    }, 350);
+    return () => clearTimeout(t);
   }, [open, initialIndex, stories.length]);
 
   useEffect(() => {
@@ -171,12 +184,20 @@ export function StoriesPlayer({
     const video = el;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
+    video.muted = muted;
     function onTime() {
       if (!video.duration || !Number.isFinite(video.duration)) return;
       setProgress(video.currentTime / video.duration);
     }
     const tryPlay = () => {
-      void video.play().catch(() => undefined);
+      void video.play().catch(() => {
+        // iOS/Safari fallback: if autoplay with sound is denied, force mute and retry.
+        if (!video.muted) {
+          video.muted = true;
+          setMuted(true);
+          void video.play().catch(() => undefined);
+        }
+      });
     };
     tryPlay();
     video.addEventListener("timeupdate", onTime);
@@ -185,7 +206,7 @@ export function StoriesPlayer({
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("loadeddata", tryPlay);
     };
-  }, [open, index, playback?.src, phase]);
+  }, [open, index, playback?.src, phase, muted]);
 
   function finishClose() {
     onClose();
@@ -305,6 +326,7 @@ export function StoriesPlayer({
       aria-modal="true"
       aria-label="Stories Majesté"
       onClick={() => {
+        if (!overlayReadyRef.current) return;
         if (phase === "survey") return;
         finishClose();
       }}
@@ -384,6 +406,18 @@ export function StoriesPlayer({
               onClick={() => go(1)}
             />
 
+            <a
+              href={instagramUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="stories-ig-follow"
+              aria-label="Seguir no Instagram"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <InstagramIcon size={18} />
+              <span>Seguir</span>
+            </a>
+
             <div className="stories-side">
               <button
                 type="button"
@@ -432,6 +466,17 @@ export function StoriesPlayer({
                 aria-label="WhatsApp"
               >
                 <WhatsAppIcon size={20} />
+              </a>
+              <a
+                href={instagramUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="stories-side-btn"
+                aria-label="Seguir no Instagram"
+                title="Seguir no Instagram"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <InstagramIcon size={20} />
               </a>
               <button
                 type="button"

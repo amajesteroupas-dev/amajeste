@@ -159,15 +159,9 @@ export async function getEnabledCheckoutMethods() {
 
   if (s.pagseguro.enabled && s.pagseguro.token) {
     methods.push({
-      id: "pagseguro_card",
-      label: "Cartão de crédito",
-      description: "PagBank — pague na loja, sem redirecionar",
-      gateway: "pagseguro",
-    });
-    methods.push({
-      id: "pagseguro_pix",
-      label: "Pix",
-      description: "PagBank — QR Code na loja, sem redirecionar",
+      id: "pagseguro",
+      label: "Majeste",
+      description: "Cartão ou PIX",
       gateway: "pagseguro",
     });
   }

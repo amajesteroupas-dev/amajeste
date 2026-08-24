@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_SHIPPING_DIMS,
   isLocalShippingId,
+  resolveMelhorEnvioServiceId,
 } from "@/lib/shipping";
 
 async function requireStaff() {
@@ -122,8 +123,15 @@ export async function POST(req: NextRequest, { params }: Props) {
     });
   }
 
-  const serviceId = Number(order.shippingServiceId);
-  if (!Number.isFinite(serviceId) || serviceId <= 0) {
+  const overrideService = Number(body.service);
+  const serviceId =
+    Number.isFinite(overrideService) && overrideService > 0
+      ? overrideService
+      : resolveMelhorEnvioServiceId(
+          order.shippingServiceId,
+          order.shippingMethod
+        );
+  if (!serviceId) {
     return NextResponse.json(
       {
         error:

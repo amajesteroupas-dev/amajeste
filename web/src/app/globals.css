@@ -483,6 +483,28 @@ a {
 .stories-tap-right {
   right: 0;
 }
+.stories-ig-follow {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 1.15rem;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem 0.45rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(18, 16, 14, 0.72);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+.stories-ig-follow:hover {
+  background: rgba(0, 0, 0, 0.82);
+}
 .stories-side {
   position: absolute;
   right: 0.55rem;
@@ -1034,41 +1056,267 @@ a {
   height: auto;
   object-fit: contain;
 }
-/* Com vídeo: sem marca d'água / “bordas” da logo — só cor de fundo */
-.banner-frame.has-video .banner-brand-watermark,
 .banner-frame.has-video .banner-studio-bg {
   display: none !important;
 }
 .banner-frame.has-video.banner-frame--studio,
-.banner-frame.has-video.banner-frame--cutouts {
-  background: var(--banner-video-bg, #1a1612);
+.banner-frame.has-video.banner-frame--cutouts,
+.banner-frame.has-video.banner-frame--overlay,
+.banner-frame.has-video.banner-frame--fullbleed {
+  background: var(--banner-video-bg, #f0e8df);
 }
+
+/* Hero de vídeo: coluna retrato (pessoa inteira) + texto centralizado no creme */
+.banner-frame.has-video:not(.banner-frame--promo) {
+  height: clamp(560px, 68vw, 800px);
+}
+.banner-video-hero,
 .banner-video-clean {
   position: absolute;
   inset: 0;
   z-index: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
   align-items: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: var(--banner-video-bg, #f0e8df);
+}
+.banner-video-hero.is-pair,
+.banner-video-clean.is-pair {
+  grid-template-columns: auto minmax(280px, 1fr) auto;
+}
+.banner-video-hero-copy {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  background: var(--banner-video-bg, #1a1612);
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
+  padding: 2rem clamp(1.5rem, 5vw, 4.5rem);
+  position: relative;
+  z-index: 3;
+  width: 100%;
+}
+.banner-video-hero-copy .banner-studio-title,
+.banner-video-hero-copy .banner-studio-sub,
+.banner-video-hero-copy .hero-kicker,
+.banner-video-hero-copy p,
+.banner-video-hero-copy h2 {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+.banner-video-hero-copy .banner-studio-title {
+  max-width: 16ch;
+  color: #5c4336;
+  -webkit-text-stroke: 0 transparent;
+  text-shadow: none;
+}
+.banner-video-hero-copy .banner-studio-sub {
+  max-width: 28rem;
+  color: #5c534c;
+  -webkit-text-stroke: 0 transparent;
+  text-shadow: none;
+}
+.banner-video-hero-copy .banner-studio-cta {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 1.1rem;
+}
+.banner-video-hero-media {
+  position: relative;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 9 / 16;
+  max-width: min(42vw, 460px);
+  min-width: 240px;
+  overflow: hidden;
+  background: var(--banner-video-bg, #f0e8df);
+  justify-self: end;
+}
+.banner-video-hero.is-pair .banner-video-hero-media {
+  max-width: min(30vw, 400px);
+  min-width: 200px;
+}
+.banner-video-hero.is-pair .banner-video-hero-media:first-child {
+  justify-self: start;
+}
+.banner-video-hero.is-art-only {
+  grid-template-columns: 1fr auto 1fr;
+}
+.banner-video-hero.is-art-only .banner-video-hero-media {
+  grid-column: 2;
+  justify-self: center;
+  max-width: min(48vw, 520px);
+}
+
+.banner-art-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+.banner-art-overlay.is-editable {
+  pointer-events: auto;
+  cursor: default;
+}
+.banner-art-layer {
+  position: absolute;
+  z-index: 8;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  pointer-events: none;
+  text-align: center;
+  line-height: 1.12;
+  white-space: pre-line;
+  cursor: inherit;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(20, 14, 10, 0.35);
+}
+.banner-art-overlay.is-editable .banner-art-layer {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+.banner-art-overlay.is-editable .banner-art-layer:active {
+  cursor: grabbing;
+}
+.banner-art-layer.is-selected {
+  outline: 1.5px dashed rgba(255, 255, 255, 0.85);
+  outline-offset: 6px;
+}
+.banner-art-headline {
+  width: 88%;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.banner-art-headline-last {
+  display: block;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.banner-art-tagline {
+  width: 86%;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1.35;
+  text-shadow: 0 1px 8px rgba(20, 14, 10, 0.4);
+}
+.banner-art-sparkle {
+  filter: drop-shadow(0 1px 4px rgba(20, 14, 10, 0.35));
+}
+.banner-art-line {
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.banner-art-line span {
+  display: block;
+  width: 100%;
+  height: 1px;
+  opacity: 0.9;
+}
+@media (max-width: 767px) {
+  .banner-video-hero.is-art-only {
+    grid-template-columns: 1fr;
+  }
+  .banner-video-hero.is-art-only .banner-video-hero-media {
+    grid-column: 1;
+  }
+}
+.banner-video-hero-media video,
+.banner-video-hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center center;
+  background: var(--banner-video-bg, #f0e8df);
+}
+.banner-video-hero-media video.banner-video-cutout,
+.banner-video-hero-media img.banner-video-cutout {
+  object-fit: contain;
+  object-position: center bottom;
+  background: transparent;
+}
+@media (max-width: 767px) {
+  .banner-frame.has-video:not(.banner-frame--promo) {
+    height: min(88svh, 760px);
+  }
+  .banner-video-hero,
+  .banner-video-clean {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(360px, 1fr);
+  }
+  .banner-video-hero:not(.is-pair) .banner-video-hero-copy,
+  .banner-video-clean:not(.is-pair) .banner-video-hero-copy {
+    grid-row: 1;
+    padding: 1.35rem 1.2rem 0.6rem;
+  }
+  .banner-video-hero:not(.is-pair) .banner-video-hero-media,
+  .banner-video-clean:not(.is-pair) .banner-video-hero-media {
+    grid-row: 2;
+    width: min(72%, 300px);
+    max-width: none;
+    min-width: 0;
+    height: auto;
+    aspect-ratio: 9 / 16;
+    justify-self: center;
+  }
+  .banner-video-hero.is-pair,
+  .banner-video-clean.is-pair {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto minmax(320px, 1fr);
+  }
+  .banner-video-hero.is-pair .banner-video-hero-copy,
+  .banner-video-clean.is-pair .banner-video-hero-copy {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding: 1.2rem 1.15rem 0.5rem;
+  }
+  .banner-video-hero.is-pair .banner-video-hero-media,
+  .banner-video-clean.is-pair .banner-video-hero-media {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: auto;
+    aspect-ratio: 9 / 16;
+    justify-self: center;
+  }
 }
 .banner-video-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: 100%;
   height: 100%;
+  flex: 1 1 auto;
   gap: 0;
 }
 .banner-video-pair > div,
 .banner-video-single,
 .banner-video-cell {
   position: relative;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  /* Faixas do “corpo inteiro” usam a cor do painel */
-  background: var(--banner-video-bg, #1a1612);
+  /* Faixas laterais = cor de fundo do banner (não preto do <video>) */
+  background: var(--banner-video-bg, #f0e8df);
 }
 .banner-video-clean video,
 .banner-video-clean img.banner-video-cutout {
@@ -1077,7 +1325,7 @@ a {
   width: 100%;
   height: 100%;
   display: block;
-  background: transparent;
+  background: var(--banner-video-bg, #f0e8df) !important;
   pointer-events: none;
   /* object-fit / position / zoom via style inline (corpo inteiro vs preencher) */
 }
@@ -1709,6 +1957,10 @@ a {
   color: #b8923f !important;
   font-size: 1.15rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .admin-sidebar-brand-text {
   font-size: 1.15rem;

@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { CashEntryType, OrderStatus } from "@prisma/client";
 import { notifyOrderShipped } from "@/lib/order-notify";
 import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
-import { releaseOrderStockHold } from "@/lib/order-stock-reserve";
+import {
+  finalizeOrderStockOnPaid,
+  cancelOrderAndReleaseStock,
+} from "@/lib/order-stock-reserve";
 import {
   actorFromSession,
   requestIp,
@@ -28,6 +31,45 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   const notifyCustomer = body.notifyCustomer !== false;
 
   const previous = await prisma.order.findUnique({ where: { id } });
+  if (!previous) {
+    return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+  }
+
+  // Cancelamento dedicado: libera reserva soft + devolve estoque físico
+  if (status === "CANCELLED") {
+    const cancel = await cancelOrderAndReleaseStock(
+      id,
+      "Pedido cancelado no admin"
+    );
+    const order = await prisma.order.update({
+      where: { id },
+      data: { trackingCode: body.trackingCode || null },
+    });
+
+    void writeAuditLog({
+      category: "orders",
+      action: "cancel",
+      summary: `Pedido ${order.orderNumber}: ${previous.status} → CANCELLED (estoque liberado)`,
+      entityType: "Order",
+      entityId: order.id,
+      detail: {
+        from: previous.status,
+        to: "CANCELLED",
+        stockReturned: cancel.units,
+        cashReversed: cancel.cashReversed,
+        alreadyCancelled: cancel.alreadyCancelled,
+      },
+      actor: actorFromSession(session),
+      ip: requestIp(req),
+    });
+
+    return NextResponse.json({
+      ...order,
+      notify: null,
+      stockReturned: cancel.units,
+      cashReversed: cancel.cashReversed,
+    });
+  }
 
   const order = await prisma.order.update({
     where: { id },
@@ -36,16 +78,6 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       trackingCode: body.trackingCode || null,
     },
   });
-
-  // Cancelar no admin deve devolver estoque ainda reservado
-  if (
-    status === "CANCELLED" &&
-    previous &&
-    previous.status !== "CANCELLED" &&
-    previous.stockHeld
-  ) {
-    await releaseOrderStockHold(id, "Pedido cancelado no admin");
-  }
 
   if (status === "SHIPPED") {
     await prisma.shipment.upsert({
@@ -81,18 +113,19 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       where: { orderId: id },
       data: { status: "APPROVED", paidAt: new Date() },
     });
-    if (previous?.status !== "PAID" && status === "PAID") {
+    if (previous.status !== "PAID" && status === "PAID") {
+      await finalizeOrderStockOnPaid(id);
       void onOrderPaidSideEffects(id);
     }
   }
 
   let notify = null;
   const becameShipped =
-    status === "SHIPPED" && previous?.status !== "SHIPPED";
+    status === "SHIPPED" && previous.status !== "SHIPPED";
   const trackingChanged =
     status === "SHIPPED" &&
     Boolean(body.trackingCode) &&
-    body.trackingCode !== previous?.trackingCode;
+    body.trackingCode !== previous.trackingCode;
 
   if (notifyCustomer && (becameShipped || trackingChanged)) {
     notify = await notifyOrderShipped(id);
@@ -101,11 +134,11 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   void writeAuditLog({
     category: "orders",
     action: "update",
-    summary: `Pedido ${order.orderNumber}: ${previous?.status || "?"} → ${status}`,
+    summary: `Pedido ${order.orderNumber}: ${previous.status} → ${status}`,
     entityType: "Order",
     entityId: order.id,
     detail: {
-      from: previous?.status,
+      from: previous.status,
       to: status,
       trackingCode: body.trackingCode || null,
     },

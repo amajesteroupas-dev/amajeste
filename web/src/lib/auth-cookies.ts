@@ -26,10 +26,21 @@ export function sessionCookieOptions(name: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const jwtSessionCallbacks: any = {
-  async jwt({ token, user }: { token: Record<string, unknown>; user?: { id?: string; role?: string } }) {
+  async jwt({
+    token,
+    user,
+  }: {
+    token: Record<string, unknown>;
+    user?: { id?: string; role?: string; impersonatedBy?: string };
+  }) {
     if (user) {
       token.role = user.role;
       token.id = user.id;
+      if (user.impersonatedBy) {
+        token.impersonatedBy = user.impersonatedBy;
+      } else {
+        delete token.impersonatedBy;
+      }
     }
     return token;
   },
@@ -43,6 +54,9 @@ export const jwtSessionCallbacks: any = {
     if (session.user) {
       session.user.role = token.role as string;
       session.user.id = token.id as string;
+      if (token.impersonatedBy) {
+        session.user.impersonatedBy = token.impersonatedBy as string;
+      }
     }
     return session;
   },

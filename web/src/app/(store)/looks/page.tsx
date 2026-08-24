@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { LookGalleryCard } from "@/components/store/LookGalleryCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -83,35 +84,17 @@ export default async function PublicLooksPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 items-stretch">
             {looks.map((l) => {
               const first = l.customer.name.split(" ")[0] || "Cliente";
               return (
-                <article
+                <LookGalleryCard
                   key={l.id}
-                  className="group border border-[#2a2420]/08 bg-white overflow-hidden"
-                >
-                  <div className="relative aspect-[3/4] bg-[#ece6df] overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={l.imageUrl}
-                      alt={l.caption || `Look de ${first}`}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="p-3.5">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-[#8a7468]">
-                      {first}
-                      {l.productName ? ` · ${l.productName}` : ""}
-                    </p>
-                    {l.caption ? (
-                      <p className="text-sm text-[#5c534c] mt-1.5 line-clamp-2">
-                        {l.caption}
-                      </p>
-                    ) : null}
-                  </div>
-                </article>
+                  imageUrl={l.imageUrl}
+                  caption={l.caption}
+                  firstName={first}
+                  productName={l.productName}
+                />
               );
             })}
           </div>

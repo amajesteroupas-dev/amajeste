@@ -63,21 +63,33 @@ export async function POST(req: NextRequest) {
   );
 
   const caption = form.get("caption") ? String(form.get("caption")).trim() : "";
-  const productName = form.get("productName")
+  const productId = form.get("productId")
+    ? String(form.get("productId")).trim()
+    : "";
+  const productNameRaw = form.get("productName")
     ? String(form.get("productName")).trim()
     : "";
 
-  if (!productName) {
+  if (!productId && !productNameRaw) {
     return NextResponse.json(
       { error: "Selecione o nome da peça conforme o produto no site" },
       { status: 400 }
     );
   }
 
-  const product = await prisma.product.findFirst({
-    where: { name: productName, active: true, deletedAt: null },
-    select: { id: true, name: true },
-  });
+  // Looks não dependem de estoque nem de active — qualquer produto cadastrado serve
+  const product = productId
+    ? await prisma.product.findFirst({
+        where: { id: productId, deletedAt: null },
+        select: { id: true, name: true },
+      })
+    : await prisma.product.findFirst({
+        where: {
+          deletedAt: null,
+          name: { equals: productNameRaw, mode: "insensitive" },
+        },
+        select: { id: true, name: true },
+      });
   if (!product) {
     return NextResponse.json(
       { error: "Peça inválida. Escolha um produto da lista da loja." },

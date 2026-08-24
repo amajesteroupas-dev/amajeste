@@ -7,8 +7,11 @@ import {
   paymentMethodLabel,
 } from "@/lib/order-labels";
 import { checkoutSuccessPath } from "@/lib/order-access";
+import { CancelOrderButton } from "@/components/admin/CancelOrderButton";
 
 export const dynamic = "force-dynamic";
+
+const CANCELLABLE = new Set(["PENDING", "PAID", "PROCESSING"]);
 
 export default async function OrdersPage() {
   await ensureSequentialOrderNumbers();
@@ -53,13 +56,22 @@ export default async function OrdersPage() {
                   <span className="badge">{orderStatusLabel(o.status)}</span>
                 </td>
                 <td>
-                  <Link
-                    href={checkoutSuccessPath(o.orderNumber)}
-                    target="_blank"
-                    className="text-xs underline text-muted hover:text-ink"
-                  >
-                    Comprovante
-                  </Link>
+                  <div className="flex flex-col items-start gap-1">
+                    <Link
+                      href={checkoutSuccessPath(o.orderNumber)}
+                      target="_blank"
+                      className="text-xs underline text-muted hover:text-ink"
+                    >
+                      Comprovante
+                    </Link>
+                    {CANCELLABLE.has(o.status) ? (
+                      <CancelOrderButton
+                        orderId={o.id}
+                        orderNumber={o.orderNumber}
+                        compact
+                      />
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

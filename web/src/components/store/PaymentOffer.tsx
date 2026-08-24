@@ -18,8 +18,6 @@ export type PaymentOfferProps = {
 
 export function PaymentOffer({
   price,
-  installmentsMax = 2,
-  interestFree = true,
   pixDiscountPercent = 5,
   showCardFlags = true,
 }: PaymentOfferProps) {
@@ -27,97 +25,73 @@ export function PaymentOffer({
   const copy = sitePromo.paymentCopy;
 
   const hasSiteWide = sitePromo.active && sitePromo.percent > 0;
-  const promoSalePrice = hasSiteWide
+  const siteSalePrice = hasSiteWide
     ? promoPrice(price, sitePromo.percent)
     : price;
 
-  const max = Math.max(
-    1,
-    hasSiteWide && sitePromo.interestFreeInstallments
-      ? sitePromo.interestFreeInstallments
-      : installmentsMax
-  );
-  const installment = promoSalePrice / max;
-
-  const pixPercent =
-    sitePromo.pixOfferPercent > 0
+  const basePixPercent = defaultPayment.pixDiscountPercent || pixDiscountPercent;
+  const pixPercent = hasSiteWide
+    ? sitePromo.percent
+    : sitePromo.pixOfferPercent > 0
       ? sitePromo.pixOfferPercent
-      : pixDiscountPercent;
-  const pixPrice = promoPrice(price, pixPercent);
-  const priceLabel = formatBRL(pixPrice);
+      : basePixPercent;
+  const pixPrice = hasSiteWide
+    ? siteSalePrice
+    : promoPrice(price, pixPercent);
 
-  const hasCard1x =
-    sitePromo.card1xOfferPercent > 0 &&
-    sitePromo.card1xOfferPercent !== sitePromo.pixOfferPercent;
-  const card1xPrice = promoPrice(price, sitePromo.card1xOfferPercent);
+  const listLabel = formatBRL(price);
+  const pixLabel = formatBRL(pixPrice);
+
+  const headline = hasSiteWide
+    ? fillPaymentCopy(copy.pixHeadlinePromo, {
+        percent: sitePromo.percent,
+        pixPercent: sitePromo.pixPercentIncluded,
+        price: pixLabel,
+        listPrice: listLabel,
+      })
+    : fillPaymentCopy(copy.pixHeadline, {
+        percent: pixPercent,
+        pixPercent,
+        price: pixLabel,
+        listPrice: listLabel,
+      });
+
+  const detail = hasSiteWide
+    ? fillPaymentCopy(copy.pixDetailPromo, {
+        percent: sitePromo.percent,
+        pixPercent: sitePromo.pixPercentIncluded,
+        price: pixLabel,
+        listPrice: listLabel,
+      })
+    : fillPaymentCopy(copy.pixDetail, {
+        percent: pixPercent,
+        pixPercent,
+        price: pixLabel,
+        listPrice: listLabel,
+      });
 
   return (
     <div className="border border-ink/12 bg-[#faf8f5] px-3 py-2.5 space-y-1.5">
-      {max === 1 ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
-          1x à vista de {formatBRL(promoSalePrice)}
+      <div className="space-y-0.5">
+        <p className="text-[11px] text-muted tabular-nums">{listLabel}</p>
+        {headline ? (
+          <p className="text-[11px] font-semibold leading-snug text-ink">
+            {headline}
+          </p>
+        ) : null}
+        {detail ? (
+          <p className="text-[11px] leading-snug text-[#6b5f56]">{detail}</p>
+        ) : null}
+        <p className="text-sm font-semibold tabular-nums text-ink pt-0.5">
+          {pixLabel}
+          <span className="ml-1 text-[10px] font-medium uppercase tracking-wide text-[#5a7a4a]">
+            no Pix
+          </span>
         </p>
-      ) : (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
-          {max}x de {formatBRL(installment)}
-          {interestFree ? " sem juros" : ""}
-        </p>
-      )}
-      {showCardFlags && (
+      </div>
+
+      {showCardFlags ? (
         <PaymentFlagsRow variant="main" showPix size="sm" />
-      )}
-
-      {hasSiteWide ? (
-        <div className="text-xs leading-snug">
-          <p className="font-semibold text-ink">
-            {fillPaymentCopy(copy.pixHeadlinePromo, {
-              percent: sitePromo.percent,
-              pixPercent: sitePromo.pixPercentIncluded,
-              price: formatBRL(promoSalePrice),
-              installments: max,
-            })}
-          </p>
-          <p className="text-[11px] text-muted mt-0.5">
-            {fillPaymentCopy(copy.pixDetailPromo, {
-              percent: sitePromo.percent,
-              pixPercent: sitePromo.pixPercentIncluded,
-              price: formatBRL(promoSalePrice),
-              installments: max,
-            })}
-          </p>
-        </div>
-      ) : null}
-
-      {!hasSiteWide && pixPercent > 0 ? (
-        <div className="text-xs leading-snug">
-          <p className="font-semibold text-ink">
-            {fillPaymentCopy(copy.pixHeadline, {
-              percent: pixPercent,
-              pixPercent: defaultPayment.pixDiscountPercent,
-              price: priceLabel,
-              installments: max,
-            })}
-          </p>
-          <p className="text-[11px] text-muted mt-0.5">
-            {fillPaymentCopy(copy.pixDetail, {
-              percent: pixPercent,
-              pixPercent: defaultPayment.pixDiscountPercent,
-              price: priceLabel,
-              installments: max,
-            })}
-          </p>
-        </div>
-      ) : null}
-
-      {!hasSiteWide && hasCard1x ? (
-        <div className="text-xs leading-snug border-t border-ink/8 pt-1.5 mt-1">
-          <p className="font-semibold text-ink">
-            {sitePromo.card1xOfferPercent}% de desconto no cartão em 1x
-          </p>
-          <p className="text-[11px] text-muted mt-0.5">
-            {formatBRL(card1xPrice)} à vista no cartão
-          </p>
-        </div>
       ) : null}
 
       <Link

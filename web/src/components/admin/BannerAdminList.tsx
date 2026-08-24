@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { parseCutoutLayers, type CutoutLayer } from "@/lib/cutout-layout";
+import {
+  parseBannerVideos,
+  isAnimatedImageCutout,
+} from "@/lib/banner-videos";
 
 type Banner = {
   id: string;
@@ -23,9 +27,55 @@ type Banner = {
   focalY?: number;
   imageZoom?: number;
   cutoutImages?: unknown;
+  videoUrl?: string | null;
+  videoSeconds?: number | null;
+  videoPlaylist?: unknown;
   sortOrder: number;
   active: boolean;
 };
+
+function firstVideoUrl(b: Banner): string | null {
+  const clips = parseBannerVideos(b.videoPlaylist, b.videoUrl, b.videoSeconds);
+  return clips[0]?.url || null;
+}
+
+function VideoOrImageThumb({
+  b,
+  className = "absolute inset-0 h-full w-full object-contain object-center",
+}: {
+  b: Banner;
+  className?: string;
+}) {
+  const video = firstVideoUrl(b);
+  const bg = b.bgColor || "#f0e8df";
+  if (video) {
+    if (isAnimatedImageCutout(video)) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={video} alt="" className={className} style={{ background: bg }} />
+      );
+    }
+    return (
+      <video
+        src={video}
+        muted
+        autoPlay
+        loop
+        playsInline
+        preload="metadata"
+        className={className}
+        style={{ background: bg }}
+      />
+    );
+  }
+  if (b.imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={b.imageUrl} alt="" className={className} />
+    );
+  }
+  return null;
+}
 
 const LAYOUT_LABEL: Record<string, string> = {
   studio: "Estúdio",
@@ -50,6 +100,13 @@ function BannerListThumb({ b }: { b: Banner }) {
       : [];
 
   if (layout === "cutouts") {
+    if (firstVideoUrl(b)) {
+      return (
+        <div className="relative w-full h-full overflow-hidden" style={{ background: bg }}>
+          <VideoOrImageThumb b={b} />
+        </div>
+      );
+    }
     return (
       <div
         className="relative w-full h-full overflow-hidden"
@@ -118,14 +175,10 @@ function BannerListThumb({ b }: { b: Banner }) {
           ) : null}
         </div>
         <div className="flex-1 relative" style={{ background: bg }}>
-          {b.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={b.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-contain object-bottom"
-            />
-          ) : null}
+          <VideoOrImageThumb
+            b={b}
+            className="absolute inset-0 h-full w-full object-contain object-bottom"
+          />
         </div>
       </div>
     );
@@ -146,18 +199,10 @@ function BannerListThumb({ b }: { b: Banner }) {
           </p>
         </div>
         <div className="flex-1 relative">
-          {b.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={b.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full"
-              style={{
-                objectFit: b.imageFit === "cover" ? "cover" : "contain",
-                objectPosition: `${b.focalX ?? 50}% ${b.focalY ?? 50}%`,
-              }}
-            />
-          ) : null}
+          <VideoOrImageThumb
+            b={b}
+            className="absolute inset-0 h-full w-full object-contain object-center"
+          />
         </div>
       </div>
     );
@@ -165,18 +210,14 @@ function BannerListThumb({ b }: { b: Banner }) {
 
   // fullbleed / overlay / fallback
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#222]">
-      {b.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={b.imageUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{
-            objectPosition: `${b.focalX ?? 50}% ${b.focalY ?? 50}%`,
-          }}
-        />
-      ) : null}
+    <div
+      className="relative w-full h-full overflow-hidden"
+      style={{ background: firstVideoUrl(b) ? bg : "#222" }}
+    >
+      <VideoOrImageThumb
+        b={b}
+        className="absolute inset-0 h-full w-full object-contain object-center"
+      />
       {b.overlay > 0 ? (
         <div
           className="absolute inset-0"

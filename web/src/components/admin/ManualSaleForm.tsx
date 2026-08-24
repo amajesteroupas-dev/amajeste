@@ -141,7 +141,8 @@ export function ManualSaleForm({ variants }: Props) {
         <h2 className="font-semibold text-[#2a2420]">Venda manual (WhatsApp)</h2>
         <p className="text-sm text-muted mt-1">
           Lança a venda no financeiro, cria o pedido como pago e dá baixa no
-          estoque automaticamente.
+          estoque automaticamente. Se cancelar o pedido, as peças voltam ao
+          estoque e o valor é estornado no caixa.
         </p>
       </div>
 

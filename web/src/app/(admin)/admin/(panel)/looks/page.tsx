@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { LookStatusForm } from "@/components/admin/LookStatusForm";
+import { LookPhotoViewButton } from "@/components/admin/LookPhotoViewButton";
 import { formatConsentDate } from "@/lib/look-image-consent";
 
 export const dynamic = "force-dynamic";
@@ -118,11 +119,11 @@ export default async function AdminLooksPage({
               looks.map((l) => (
                 <tr key={l.id}>
                   <td>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={l.imageUrl}
-                      alt=""
-                      className="h-16 w-12 object-cover bg-[#ece6df]"
+                    <LookPhotoViewButton
+                      imageUrl={l.imageUrl}
+                      caption={l.caption}
+                      customerName={l.customer.name}
+                      productName={l.productName}
                     />
                   </td>
                   <td>
@@ -132,11 +133,11 @@ export default async function AdminLooksPage({
                       {l.createdAt.toLocaleDateString("pt-BR")}
                     </div>
                   </td>
-                  <td className="max-w-xs">
+                  <td className="max-w-sm">
                     {l.productName ? (
                       <div className="font-medium text-sm">{l.productName}</div>
                     ) : null}
-                    <div className="text-xs text-muted line-clamp-2">
+                    <div className="text-sm text-[#3a322c] leading-relaxed whitespace-pre-wrap mt-1">
                       {l.caption || "—"}
                     </div>
                   </td>

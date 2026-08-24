@@ -30,8 +30,10 @@ function ManualSide() {
         <p className="mt-1.5 text-[13px] leading-relaxed text-[#5c534c]">
           Cadastre quantas promoções quiser. Cada uma pode valer para{" "}
           <strong>todo o site</strong>, só <strong>Pix</strong> ou só{" "}
-          <strong>cartão</strong>. Nas promoções que aceitam cartão, escolha
-          quantas parcelas sem juros serão permitidas.
+          <strong>cartão</strong>. O desconto do percentual vale mesmo se a
+          cliente parcelar; nas opções com cartão, escolha até quantas parcelas
+          são <strong>sem juros</strong> (acima disso o PagBank cobra juros
+          dela, sem tirar o desconto).
         </p>
       </div>
 
@@ -52,16 +54,16 @@ function ManualSide() {
         </h3>
         <ul className="space-y-2 text-[13px] text-[#5c534c] leading-snug">
           <li>
-            <strong>15% no site em 1x</strong> — escopo Todo o site + parcelas
-            = 1x à vista.
+            <strong>15% no site todo</strong> — escopo Todo o site + sem juros
+            = 1x. Em 2x/3x o −15% continua; só entram juros do PagBank.
           </li>
           <li>
-            <strong>15% no cartão em 1x</strong> — escopo Cartão + parcelas =
-            1x.
+            <strong>15% só no cartão</strong> — escopo Cartão + sem juros = 1x
+            (mesmo comportamento de parcelas).
           </li>
           <li>
-            <strong>10% em qualquer pagamento</strong> — escopo Todo o site +
-            parcelas = 2x (ou o que preferir).
+            <strong>10% com 2x sem juros</strong> — escopo Todo o site +
+            parcelas sem juros = 2x.
           </li>
         </ul>
       </div>
@@ -288,8 +290,8 @@ export function PromotionsAdmin() {
                         {(p.scope === "all" || p.scope === "card") &&
                         p.cardInstallmentsMax
                           ? p.cardInstallmentsMax === 1
-                            ? " · 1x à vista"
-                            : ` · ${p.cardInstallmentsMax}x sem juros`
+                            ? " · sem juros em 1x (desconto em qualquer parcela)"
+                            : ` · sem juros até ${p.cardInstallmentsMax}x (desconto em qualquer parcela)`
                           : ""}
                         {p.startsAt
                           ? ` · de ${new Date(p.startsAt).toLocaleString("pt-BR")}`
@@ -424,9 +426,11 @@ export function PromotionsAdmin() {
             <label className="block text-sm font-medium text-[#2a2420]">
               Parcelas sem juros durante a promoção
               <span className="block text-[12px] font-normal text-[#7a7168] mt-0.5">
-                A loja mostra essa quantidade na página do produto e divide
-                automaticamente o <strong>preço promocional</strong>. Use{" "}
-                <strong>1</strong> para à vista no cartão (ex.: “1x à vista”).
+                Não limita o desconto: o % da promoção vale em{" "}
+                <strong>qualquer quantidade de parcelas</strong>. Este campo só
+                define até quantas o PagBank fica sem juros; acima disso a
+                cliente assume o juros. Use <strong>1</strong> para “1x à vista”
+                na vitrine.
               </span>
               <select
                 className="input mt-1.5"

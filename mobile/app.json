@@ -1,0 +1,121 @@
+{
+  "expo": {
+    "name": "Majesté",
+    "slug": "majeste",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "amajeste",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "primaryColor": "#a85f64",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.amajeste.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["whatsapp"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:amajeste.com.br",
+        "applinks:www.amajeste.com.br",
+        "applinks:equilibra.tech",
+        "applinks:www.equilibra.tech"
+      ],
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "br.com.amajeste.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#1a1612",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "amajeste.com.br",
+              "pathPrefix": "/produto"
+            },
+            {
+              "scheme": "https",
+              "host": "www.amajeste.com.br",
+              "pathPrefix": "/produto"
+            },
+            {
+              "scheme": "https",
+              "host": "equilibra.tech",
+              "pathPrefix": "/produto"
+            },
+            {
+              "scheme": "https",
+              "host": "amajeste.com.br",
+              "pathPrefix": "/checkout"
+            },
+            {
+              "scheme": "https",
+              "host": "equilibra.tech",
+              "pathPrefix": "/checkout"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1a1612",
+          "imageWidth": 220
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "replace-after-eas-init"
+      },
+      "apiUrl": "https://amajeste.com.br",
+      "privacyPolicyUrl": "https://amajeste.com.br/privacidade",
+      "termsUrl": "https://amajeste.com.br/termos",
+      "supportUrl": "https://amajeste.com.br/contato"
+    },
+    "owner": "amajeste"
+  }
+}

@@ -23,23 +23,44 @@ export function OrderStatusForm({
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const nextStatus = String(form.get("status") || "");
+    if (nextStatus === "CANCELLED" && status !== "CANCELLED") {
+      const ok = window.confirm(
+        "Cancelar este pedido? As peças voltam ao estoque e o valor é estornado no caixa."
+      );
+      if (!ok) return;
+    }
     setWhatsappUrl(null);
     setEmailInfo(null);
     const res = await fetch(`/api/admin/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        status: form.get("status"),
+        status: nextStatus,
         trackingCode: form.get("trackingCode"),
         notifyCustomer: true,
       }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMsg("Erro ao atualizar");
+      setMsg(data.error || "Erro ao atualizar");
       return;
     }
-    setMsg("Atualizado");
+    if (nextStatus === "CANCELLED") {
+      const units = Number(data.stockReturned || 0);
+      const cash = Number(data.cashReversed || 0);
+      const stockMsg =
+        units > 0
+          ? `${units} peça(s) no estoque`
+          : "estoque liberado";
+      const cashMsg =
+        cash > 0
+          ? ` · R$ ${cash.toFixed(2).replace(".", ",")} estornado no caixa`
+          : "";
+      setMsg(`Cancelado · ${stockMsg}${cashMsg}`);
+    } else {
+      setMsg("Atualizado");
+    }
     if (data.notify?.whatsappUrl) {
       setWhatsappUrl(data.notify.whatsappUrl);
     }

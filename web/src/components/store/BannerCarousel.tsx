@@ -7,6 +7,7 @@ import {
   cssFromCtaButton,
   cssFromLayer,
   getLayerStyle,
+  layerInkOnPanel,
   parseTextStyle,
   renderLayerText,
   hasCustomRuns,
@@ -15,9 +16,14 @@ import {
 import { parseCutoutLayers, type CutoutLayer } from "@/lib/cutout-layout";
 import { mediaSrc } from "@/lib/media-src";
 import {
+  artHasCopy,
+  artLayersFromStyle,
+  type BannerArtLayer,
+} from "@/lib/banner-art";
+import { BannerArtOverlay } from "@/components/store/BannerArtOverlay";
+import {
   parseBannerVideos,
   parseVideoLayout,
-  getClipFrame,
   isCutoutVideoUrl,
   isAnimatedImageCutout,
   type BannerVideoClip,
@@ -78,26 +84,14 @@ function mediaStyle(b: StoreBanner, mode: "studio" | "fill" = "fill"): CSSProper
   };
 }
 
-/** Estilo de enquadramento por clipe (lado a lado independente). */
-function videoClipStyle(
-  clip: BannerVideoClip,
-  b: StoreBanner
-): CSSProperties {
+/** Pessoa inteira no painel retrato — never cover (corta cabeça/pernas). */
+function videoClipStyle(clip: BannerVideoClip): CSSProperties {
   const cutout = clip.cutout || isCutoutVideoUrl(clip.url);
-  const fit = cutout || b.imageFit === "contain" ? "contain" : "cover";
-  const frame = getClipFrame(clip, b);
-  const panX = ((50 - frame.focalX) / 50) * 32;
-  const panY = ((50 - frame.focalY) / 50) * 32;
   return {
-    objectFit: fit,
-    objectPosition:
-      fit === "cover"
-        ? `${frame.focalX}% ${frame.focalY}%`
-        : "center center",
-    transform: `translate(${panX}%, ${panY}%) scale(${frame.zoom})`,
-    transformOrigin: "center center",
+    objectFit: "contain",
+    objectPosition: cutout ? "center bottom" : "center center",
     pointerEvents: "none",
-    background: cutout ? "transparent" : undefined,
+    background: cutout ? "transparent" : "var(--banner-video-bg, #f0e8df)",
   };
 }
 
@@ -150,6 +144,54 @@ function bannerCtaHref(href: string | null | undefined) {
   const h = (href || "").trim();
   if (!h || h === "/" || h === "#") return "/categoria/conjunto-legging";
   return h;
+}
+
+function HeroVideoMedia({
+  clip,
+  banner,
+  mediaKey,
+  loop = true,
+  onEnded,
+  artLayers = [],
+}: {
+  clip: BannerVideoClip;
+  banner: StoreBanner;
+  mediaKey: string;
+  loop?: boolean;
+  onEnded?: () => void;
+  artLayers?: BannerArtLayer[];
+}) {
+  const cutout = Boolean(clip.cutout || isCutoutVideoUrl(clip.url));
+  return (
+    <div className="banner-video-hero-media">
+      {isAnimatedImageCutout(clip.url) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={mediaKey}
+          src={clip.url}
+          alt=""
+          className={cutout ? "banner-video-cutout" : undefined}
+          style={videoClipStyle(clip)}
+        />
+      ) : (
+        <video
+          key={mediaKey}
+          src={clip.url}
+          autoPlay
+          muted
+          loop={loop}
+          playsInline
+          poster={cutout ? undefined : banner.imageUrl || undefined}
+          className={cutout ? "banner-video-cutout" : undefined}
+          style={videoClipStyle(clip)}
+          onEnded={onEnded}
+        />
+      )}
+      {artLayers.length > 0 ? (
+        <BannerArtOverlay layers={artLayers} />
+      ) : null}
+    </div>
+  );
 }
 
 function Nav({
@@ -267,7 +309,7 @@ export function BannerCarousel({ banners }: Props) {
     playlist[Math.min(videoIndex, Math.max(0, playlist.length - 1))] || null;
   const hasVideo = playlist.length > 0;
   const multiVideo = !pairMode && playlist.length > 1;
-  const videoBg = b.panelColor || b.bgColor || "#1a1612";
+  const videoBg = b.bgColor || "#f0e8df";
 
   const ts = parseTextStyle(b.textStyle);
   const titleLayer = getLayerStyle(ts, "title");
@@ -289,165 +331,95 @@ export function BannerCarousel({ banners }: Props) {
         ? "items-end text-right"
         : "items-start text-left";
 
-  const hasCopyText = Boolean(
-    b.title?.trim() ||
-      b.subtitle?.trim() ||
-      b.highlight?.trim() ||
-      b.promoText?.trim() ||
-      b.tagline?.trim() ||
-      b.ctaLabel
+  const titleOnCream = layerInkOnPanel(titleLayer, "#5c4336");
+  const subOnCream = layerInkOnPanel(subLayer, "#5c534c");
+  const highlightOnCream = layerInkOnPanel(highlightLayer, "#a85f64");
+  const promoOnCream = layerInkOnPanel(promoLayer, "#5c534c");
+  const taglineOnCream = layerInkOnPanel(taglineLayer, "#8a7468");
+  const videoArt = artLayersFromStyle(ts);
+  const hideCreamText = artHasCopy(videoArt);
+
+  const heroCopy = (
+    <div className="banner-video-hero-copy">
+      {!hideCreamText && b.tagline?.trim() ? (
+        <p className="hero-kicker" style={cssFromLayer(taglineOnCream)}>
+          {renderLayerText(taglineOnCream, b.tagline)}
+        </p>
+      ) : null}
+      {!hideCreamText && b.highlight?.trim() ? (
+        <p style={cssFromLayer(highlightOnCream)}>
+          {renderLayerText(highlightOnCream, b.highlight)}
+        </p>
+      ) : null}
+      {!hideCreamText && b.title?.trim() ? (
+        <h2 className="banner-studio-title" style={cssFromLayer(titleOnCream)}>
+          {renderLayerText(titleOnCream, b.title)}
+        </h2>
+      ) : null}
+      {!hideCreamText && b.subtitle?.trim() ? (
+        <p className="banner-studio-sub" style={cssFromLayer(subOnCream)}>
+          {renderLayerText(subOnCream, b.subtitle)}
+        </p>
+      ) : null}
+      {!hideCreamText && b.promoText?.trim() ? (
+        <p className="banner-studio-sub" style={cssFromLayer(promoOnCream)}>
+          {renderLayerText(promoOnCream, b.promoText)}
+        </p>
+      ) : null}
+      {b.ctaLabel ? (
+        <div className="banner-studio-cta" data-no-pan>
+          <Link
+            href={bannerCtaHref(b.ctaHref)}
+            className="banner-cta-btn"
+            style={ctaCss}
+          >
+            {renderLayerText(ctaLayer, b.ctaLabel)}
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 
   const cleanVideoStage =
     hasVideo && layout !== "promo" ? (
       <div
-        className="banner-video-clean"
+        className={`banner-video-hero${pairMode ? " is-pair" : ""}${
+          hideCreamText && !b.ctaLabel ? " is-art-only" : ""
+        }`}
         style={{
           background: videoBg,
           ["--banner-video-bg" as string]: videoBg,
         }}
       >
         {pairMode ? (
-          <div className="banner-video-pair">
-            {playlist.slice(0, 2).map((clip, i) => (
-              <div
-                key={`${b.id}-pair-${i}-${clip.url}`}
-                className="banner-video-cell"
-                style={{ background: videoBg }}
-              >
-                {isAnimatedImageCutout(clip.url) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={clip.url}
-                    alt=""
-                    className="banner-video-cutout"
-                    style={videoClipStyle(clip, b)}
-                  />
-                ) : (
-                  <video
-                    src={clip.url}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    poster={
-                      clip.cutout || isCutoutVideoUrl(clip.url)
-                        ? undefined
-                        : b.imageUrl || undefined
-                    }
-                    className={
-                      clip.cutout || isCutoutVideoUrl(clip.url)
-                        ? "banner-video-cutout"
-                        : undefined
-                    }
-                    style={videoClipStyle(clip, b)}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          <>
+            <HeroVideoMedia
+              clip={playlist[0]}
+              banner={b}
+              mediaKey={`${b.id}-pair-0-${playlist[0].url}`}
+              artLayers={videoArt}
+            />
+            {hideCreamText && !b.ctaLabel ? null : heroCopy}
+            <HeroVideoMedia
+              clip={playlist[1]}
+              banner={b}
+              mediaKey={`${b.id}-pair-1-${playlist[1].url}`}
+            />
+          </>
         ) : activeClip ? (
-          <div
-            className="banner-video-single banner-video-cell"
-            style={{ background: videoBg }}
-          >
-            {isAnimatedImageCutout(activeClip.url) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={`${b.id}-v-${videoIndex}-${activeClip.url}`}
-                src={activeClip.url}
-                alt=""
-                className="banner-video-cutout"
-                style={videoClipStyle(activeClip, b)}
-              />
-            ) : (
-              <video
-                key={`${b.id}-v-${videoIndex}-${activeClip.url}`}
-                src={activeClip.url}
-                autoPlay
-                muted
-                loop={!multiVideo}
-                playsInline
-                poster={
-                  activeClip.cutout || isCutoutVideoUrl(activeClip.url)
-                    ? undefined
-                    : b.imageUrl || undefined
-                }
-                className={
-                  activeClip.cutout || isCutoutVideoUrl(activeClip.url)
-                    ? "banner-video-cutout"
-                    : undefined
-                }
-                style={videoClipStyle(activeClip, b)}
-                onEnded={() => {
-                  if (multiVideo) advanceFromVideo(playlist.length);
-                }}
-              />
-            )}
-          </div>
-        ) : null}
-        {hasCopyText ? (
-          <div
-            className={`banner-video-clean-copy ${align}${
-              b.textAlign === "center" ? " has-text-top" : ""
-            }`}
-          >
-            {b.tagline?.trim() ? (
-              <p className="hero-kicker" style={taglineCss}>
-                {renderLayerText(taglineLayer, b.tagline)}
-              </p>
-            ) : null}
-            {b.highlight?.trim() ? (
-              <p style={highlightCss}>
-                {renderLayerText(highlightLayer, b.highlight)}
-              </p>
-            ) : null}
-            {b.title?.trim() ? (
-              <h2
-                className="banner-studio-title"
-                style={{
-                  ...titleCss,
-                  color: titleCss.color || "#f4efe8",
-                  maxWidth: "16ch",
-                }}
-              >
-                {renderLayerText(titleLayer, b.title)}
-              </h2>
-            ) : null}
-            {b.subtitle?.trim() ? (
-              <p
-                className="banner-studio-sub"
-                style={{
-                  ...subCss,
-                  color: subCss.color || "#f4efe8",
-                }}
-              >
-                {renderLayerText(subLayer, b.subtitle)}
-              </p>
-            ) : null}
-            {b.promoText?.trim() ? (
-              <p
-                className="banner-studio-sub"
-                style={{
-                  ...promoCss,
-                  color: promoCss.color || "#f4efe8",
-                }}
-              >
-                {renderLayerText(promoLayer, b.promoText)}
-              </p>
-            ) : null}
-            {b.ctaLabel ? (
-              <div className="mt-3" data-no-pan>
-                <Link
-                  href={bannerCtaHref(b.ctaHref)}
-                  className="banner-cta-btn"
-                  style={ctaCss}
-                >
-                  {renderLayerText(ctaLayer, b.ctaLabel)}
-                </Link>
-              </div>
-            ) : null}
-          </div>
+          <>
+            {hideCreamText && !b.ctaLabel ? null : heroCopy}
+            <HeroVideoMedia
+              clip={activeClip}
+              banner={b}
+              mediaKey={`${b.id}-v-${videoIndex}-${activeClip.url}`}
+              loop={!multiVideo}
+              artLayers={videoArt}
+              onEnded={() => {
+                if (multiVideo) advanceFromVideo(playlist.length);
+              }}
+            />
+          </>
         ) : null}
       </div>
     ) : null;
@@ -463,7 +435,7 @@ export function BannerCarousel({ banners }: Props) {
         loop={!multiVideo}
         playsInline
         poster={b.imageUrl || undefined}
-        style={videoClipStyle(activeClip, b)}
+        style={videoClipStyle(activeClip)}
         onEnded={() => {
           if (multiVideo) advanceFromVideo(playlist.length);
         }}

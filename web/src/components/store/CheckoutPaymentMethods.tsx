@@ -7,6 +7,7 @@ import {
   PixFlag,
 } from "@/components/store/PaymentFlags";
 import { PagBankCardForm } from "@/components/store/PagBankCardForm";
+import { BrandLogo } from "@/components/store/BrandLogo";
 import { formatBRL } from "@/lib/utils";
 
 export type CheckoutPayMethod = {
@@ -44,6 +45,10 @@ type Props = {
     installments: number;
     holderName: string;
     holderTaxId: string;
+    interestTotal?: number;
+    interestTotalCents?: number;
+    interestInstallments?: number;
+    cardBin?: string;
   }) => Promise<void>;
   /** Atualiza o total/promo do checkout assim que a parcela muda. */
   onInstallmentsChange?: (installments: number) => void;
@@ -52,11 +57,13 @@ type Props = {
   cardHolderName?: string;
   cardHolderTaxId?: string;
   cardBusy?: boolean;
+  /** Parcelas sem juros assumidas pela loja (promoção). */
+  maxInterestFree?: number;
 };
 
 function MethodIcon({ id }: { id: string }) {
   if (id === "pix" || id === "pagseguro_pix") return <PixFlag size="sm" />;
-  if (id === "credit_card" || id === "pagseguro_card") {
+  if (id === "credit_card") {
     return (
       <span className="inline-flex scale-90 origin-left">
         <PaymentFlagsRow variant="main" showPix={false} size="sm" />
@@ -73,14 +80,15 @@ function MethodIcon({ id }: { id: string }) {
       </span>
     );
   }
-  if (id === "pagseguro") {
+  if (id === "pagseguro" || id === "pagseguro_card") {
     return (
-      <span
-        className="inline-flex h-5 px-1.5 items-center justify-center rounded-[3px] bg-[#1a9f4b] text-[9px] font-bold text-white"
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/logo-majeste.svg"
+        alt=""
+        className="h-5 w-auto max-w-[4.5rem] object-contain object-left"
         aria-hidden
-      >
-        PS
-      </span>
+      />
     );
   }
   if (id === "infinitypay") {
@@ -145,6 +153,7 @@ export function CheckoutPaymentMethods({
   cardHolderName = "",
   cardHolderTaxId = "",
   cardBusy,
+  maxInterestFree = 1,
 }: Props) {
   const [mpReady, setMpReady] = useState(false);
   const [brickError, setBrickError] = useState("");
@@ -197,6 +206,98 @@ export function CheckoutPaymentMethods({
     <div className="space-y-2">
       {methods.map((m) => {
         const selected = method === m.id;
+
+        if (m.id === "pagseguro") {
+          // Sem rádio externo: só a logo centralizada + Cartão/Pix abaixo.
+          if (!selected) {
+            // Se houver outros gateways, um clique na logo seleciona o PagBank.
+            const others = methods.some((x) => x.id !== "pagseguro");
+            if (others) {
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="w-full border border-line bg-white px-3 py-4 hover:border-[#2a2420]/40 transition-colors"
+                  onClick={() => onMethodChange(m.id)}
+                >
+                  <span className="flex justify-center">
+                    <BrandLogo size="md" />
+                  </span>
+                </button>
+              );
+            }
+          }
+
+          return (
+            <div
+              key={m.id}
+              className="border border-[#2a2420] bg-[#faf7f3]"
+            >
+              <div className="flex justify-center px-3 py-5 bg-white">
+                <BrandLogo size="lg" />
+              </div>
+              <div className="border-t border-line px-3 py-3 bg-white space-y-3">
+                <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
+                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pagseguro-type"
+                      checked={pagseguroType === "CREDIT_CARD"}
+                      onChange={() => onPagseguroTypeChange?.("CREDIT_CARD")}
+                    />
+                    <span className="inline-flex items-center gap-1.5">
+                      Cartão
+                      <span className="inline-flex scale-75 origin-left">
+                        <PaymentFlagsRow
+                          variant="main"
+                          showPix={false}
+                          size="sm"
+                        />
+                      </span>
+                    </span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pagseguro-type"
+                      checked={pagseguroType === "PIX"}
+                      onChange={() => onPagseguroTypeChange?.("PIX")}
+                    />
+                    <span className="inline-flex items-center gap-1.5">
+                      Pix <PixFlag size="sm" />
+                    </span>
+                  </label>
+                </div>
+
+                {pagseguroType === "CREDIT_CARD" ? (
+                  !pagseguroPublicKey ? (
+                    <p className="text-xs text-[#8a3a3a]">
+                      Configure a chave pública PagBank em Admin → Pagamentos
+                      (ou salve o token do Vendedor para gerar automaticamente).
+                    </p>
+                  ) : onPagBankCardPay ? (
+                    <PagBankCardForm
+                      publicKey={pagseguroPublicKey}
+                      amount={liveAmount}
+                      maxInterestFree={maxInterestFree}
+                      busy={cardBusy}
+                      defaultHolder={cardHolderName}
+                      defaultTaxId={cardHolderTaxId}
+                      onInstallmentsChange={onInstallmentsChange}
+                      onPay={onPagBankCardPay}
+                    />
+                  ) : null
+                ) : (
+                  <p className="text-xs text-muted">
+                    Ao finalizar, o QR Code Pix aparece nesta loja — sem sair do
+                    site.
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div
             key={m.id}
@@ -339,6 +440,7 @@ export function CheckoutPaymentMethods({
                   <PagBankCardForm
                     publicKey={pagseguroPublicKey}
                     amount={liveAmount}
+                    maxInterestFree={maxInterestFree}
                     busy={cardBusy}
                     defaultHolder={cardHolderName}
                     defaultTaxId={cardHolderTaxId}
@@ -358,66 +460,6 @@ export function CheckoutPaymentMethods({
               </div>
             ) : null}
 
-            {selected && m.id === "pagseguro" ? (
-              <div className="border-t border-line px-3 py-3 bg-white space-y-3">
-                <div className="flex flex-wrap gap-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="radio"
-                      name="pagseguro-type"
-                      checked={pagseguroType === "CREDIT_CARD"}
-                      onChange={() => onPagseguroTypeChange?.("CREDIT_CARD")}
-                    />
-                    <span className="inline-flex items-center gap-1.5">
-                      Cartão de crédito
-                      <span className="inline-flex scale-75 origin-left">
-                        <PaymentFlagsRow
-                          variant="main"
-                          showPix={false}
-                          size="sm"
-                        />
-                      </span>
-                    </span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="radio"
-                      name="pagseguro-type"
-                      checked={pagseguroType === "PIX"}
-                      onChange={() => onPagseguroTypeChange?.("PIX")}
-                    />
-                    <span className="inline-flex items-center gap-1.5">
-                      Pix <PixFlag size="sm" />
-                    </span>
-                  </label>
-                </div>
-
-                {pagseguroType === "CREDIT_CARD" ? (
-                  !pagseguroPublicKey ? (
-                    <p className="text-xs text-[#8a3a3a]">
-                      Configure a chave pública PagBank em Admin → Pagamentos
-                      (ou salve o token do Vendedor para gerar automaticamente).
-                    </p>
-                  ) : onPagBankCardPay ? (
-                    <PagBankCardForm
-                      publicKey={pagseguroPublicKey}
-                      amount={liveAmount}
-                      busy={cardBusy}
-                      defaultHolder={cardHolderName}
-                      defaultTaxId={cardHolderTaxId}
-                      onInstallmentsChange={onInstallmentsChange}
-                      onPay={onPagBankCardPay}
-                    />
-                  ) : null
-                ) : (
-                  <p className="text-xs text-muted">
-                    Ao finalizar, o QR Code Pix aparece nesta loja — sem sair do
-                    site.
-                  </p>
-                )}
-              </div>
-            ) : null}
-
             {selected && m.id === "infinitypay" ? (
               <div className="border-t border-line px-3 py-2.5 bg-white">
                 <p className="text-xs text-muted">
@@ -425,7 +467,6 @@ export function CheckoutPaymentMethods({
                 </p>
               </div>
             ) : null}
-
           </div>
         );
       })}

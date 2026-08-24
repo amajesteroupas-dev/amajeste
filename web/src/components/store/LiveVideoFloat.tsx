@@ -9,6 +9,8 @@ import { useLiveMiniPlayer } from "@/components/store/LiveMiniPlayerContext";
 type Props = {
   stories: StoreStoryDTO[];
   surveyQuestions?: StoryQuestion[];
+  /** Quando false, não mostra questionário no fim (global + por vídeo). */
+  surveyEnabled?: boolean;
 };
 
 /** iOS Safari: #t=0.001 força o 1º frame; video dentro de <button> fica preto. */
@@ -19,7 +21,11 @@ function iosFriendlySrc(src: string) {
 }
 
 /** Bolinha global dos Stories — vídeo rolando; clique abre player estilo Instagram. */
-export function LiveVideoFloat({ stories, surveyQuestions = [] }: Props) {
+export function LiveVideoFloat({
+  stories,
+  surveyQuestions = [],
+  surveyEnabled = true,
+}: Props) {
   const enabled = stories.length > 0;
   const [open, setOpen] = useState(false);
   const [previewIdx, setPreviewIdx] = useState(0);
@@ -133,6 +139,7 @@ export function LiveVideoFloat({ stories, surveyQuestions = [] }: Props) {
       <StoriesPlayer
         stories={stories}
         surveyQuestions={surveyQuestions}
+        surveyEnabled={surveyEnabled}
         open={open}
         onClose={() => setOpen(false)}
         initialIndex={previewIdx}

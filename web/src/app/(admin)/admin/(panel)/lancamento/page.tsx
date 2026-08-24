@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { LaunchResetClient } from "@/components/admin/LaunchResetClient";
 import {
-  STOCK_RESERVE_MINUTES,
+  STOCK_RESERVE_SECONDS,
   expireStaleStockReservations,
 } from "@/lib/order-stock-reserve";
 
@@ -41,7 +41,7 @@ export default async function AdminLancamentoPage() {
       </p>
       <p className="text-sm text-[#5c534c] mb-6 max-w-2xl border border-black/8 bg-white p-3">
         Regra de estoque na loja: ao criar o pedido o produto fica{" "}
-        <strong>reservado por {STOCK_RESERVE_MINUTES} minutos</strong>. Se o
+        <strong>reservado por {Math.round(STOCK_RESERVE_SECONDS / 60)} minutos</strong>. Se o
         pagamento for recusado, o pedido continua aberto para tentar de novo (a
         reserva é renovada). Só cancela e libera estoque se passar o prazo sem
         pagamento. Zerar pedidos aqui <strong>não altera</strong> o estoque

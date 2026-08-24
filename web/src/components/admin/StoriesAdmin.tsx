@@ -214,6 +214,7 @@ export function StoriesAdmin() {
   const [bank, setBank] = useState<BankItem[]>([]);
   const [maxActive, setMaxActive] = useState(5);
   const [activeCount, setActiveCount] = useState(0);
+  const [surveyEnabled, setSurveyEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -237,6 +238,7 @@ export function StoriesAdmin() {
       setBank(data.videoBank || []);
       setMaxActive(data.maxActive || 5);
       setActiveCount(data.activeCount || 0);
+      setSurveyEnabled(data.surveyEnabled !== false);
       const map: Record<string, StoryQuestion[]> = {};
       for (const s of list) {
         map[s.id] =
@@ -329,6 +331,31 @@ export function StoriesAdmin() {
           : "Perguntas deste vídeo removidas"
       );
       await load();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Erro");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleSurveyEnabled() {
+    const next = !surveyEnabled;
+    setBusy(true);
+    setStatus(next ? "Ativando questionário…" : "Desativando questionário…");
+    try {
+      const res = await fetch("/api/admin/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setSurveyEnabled", enabled: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha");
+      setSurveyEnabled(Boolean(data.surveyEnabled));
+      setStatus(
+        data.surveyEnabled
+          ? "Questionário ativo — aparece no fim dos stories"
+          : "Questionário desativado — clientes não verão perguntas"
+      );
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Erro");
     } finally {
@@ -483,12 +510,32 @@ export function StoriesAdmin() {
             disabled={busy}
           />
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted mb-2">
-              Questionário final (todos os vídeos)
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <p className="text-xs uppercase tracking-wider text-muted">
+                Questionário final (todos os vídeos)
+              </p>
+              <label className="inline-flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--rose)]"
+                  checked={surveyEnabled}
+                  disabled={busy}
+                  onChange={() => void toggleSurveyEnabled()}
+                />
+                <span>
+                  {surveyEnabled ? "Questionário ativo" : "Questionário desativado"}
+                </span>
+              </label>
+            </div>
             <p className="text-sm text-muted mb-2">
               Aparece <strong>uma vez</strong> no fim da sequência. Para
-              perguntas só de um vídeo, use “Perguntas deste story” abaixo.
+              perguntas só de um vídeo, use “Perguntas deste story” abaixo.{" "}
+              {surveyEnabled ? null : (
+                <span className="text-[var(--rose-dark)]">
+                  Desligado — as perguntas ficam salvas, mas não aparecem na
+                  loja.
+                </span>
+              )}
             </p>
             <QuestionsEditor
               value={questions}

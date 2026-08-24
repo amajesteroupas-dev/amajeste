@@ -32,6 +32,13 @@ export const authConfig = {
       }
 
       if (
+        pathname === "/esqueci-senha" ||
+        pathname === "/redefinir-senha"
+      ) {
+        return true;
+      }
+
+      if (
         pathname.startsWith("/conta") ||
         pathname.startsWith("/academia")
       ) {

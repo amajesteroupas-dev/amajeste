@@ -7,10 +7,10 @@ export type PaymentCopySettings = {
   productCardLinePromo: string;
   /**
    * Título do bloco Pix na página do produto.
-   * Use {percent} para o % (ex.: "5% de desconto pagando com Pix").
+   * Use {percent} / {pixPercent} (ex.: "5% de desconto comprando no Pix").
    */
   pixHeadline: string;
-  /** Detalhe sob o título Pix. Use {price} e {percent}. */
+  /** Detalhe sob o título Pix. Use {price}, {listPrice}, {percent}. */
   pixDetail: string;
   /** Título quando a promoção do site está ativa. Use {percent}. */
   pixHeadlinePromo: string;
@@ -22,22 +22,25 @@ export type PaymentCopySettings = {
 
 export const DEFAULT_PAYMENT_COPY: PaymentCopySettings = {
   productCardLine:
-    "Parcele em 2x sem juros ou ganhe 5% de desconto no pix.",
+    "{pixPercent}% de desconto no Pix · Não acumulável · {price}",
   productCardLinePromo:
-    "{percent}% OFF no site · no Pix o desconto de {pixPercent}% já está incluso.",
-  pixHeadline: "{percent}% de desconto pagando com Pix",
-  pixDetail: "{price} no Pix · Não acumulável com outras promoções",
+    "{percent}% OFF no site · no Pix o desconto de {pixPercent}% já está incluso · {price}",
+  pixHeadline: "{pixPercent}% de desconto comprando no Pix",
+  pixDetail: "Não acumulável com outras promoções",
   pixHeadlinePromo: "{percent}% de desconto em todo o site",
   pixDetailPromo:
-    "{price} · no Pix o desconto de {pixPercent}% já está incluso",
+    "No Pix o desconto de {pixPercent}% já está incluso · Não acumulável",
   footerPaymentLine:
-    "Parcele em 2x sem juros ou ganhe 5% de desconto no pix. Pagamentos processados com segurança via Mercado Pago.",
+    "Ganhe 5% de desconto no Pix. Não acumulável com outras promoções. Pagamentos processados com segurança.",
 };
 
 export type PaymentCopyVars = {
   percent?: number | string;
   pixPercent?: number | string;
+  /** Preço final no Pix (ou com promoção do site). */
   price?: string;
+  /** Preço cheio / de tabela, antes do desconto Pix. */
+  listPrice?: string;
   installments?: number | string;
 };
 
@@ -48,6 +51,7 @@ export function fillPaymentCopy(
   return template
     .replaceAll("{percent}", String(vars.percent ?? ""))
     .replaceAll("{pixPercent}", String(vars.pixPercent ?? ""))
+    .replaceAll("{listPrice}", String(vars.listPrice ?? ""))
     .replaceAll("{price}", String(vars.price ?? ""))
     .replaceAll("{installments}", String(vars.installments ?? ""));
 }

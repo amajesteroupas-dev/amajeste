@@ -71,21 +71,48 @@ function authFailMessage(sandbox: boolean, status: number, detail: string) {
     : "Token PagBank inválido na produção. Em PagBank → Venda online → Integrações → Gerar/obter token. Desmarque “Sandbox” no admin.";
 }
 
+/** Mensagens técnicas do PagBank → texto claro para a cliente. */
+export function humanizePagBankError(raw: string): string {
+  const t = String(raw || "");
+  if (/buyer email must not be equals to merchant email/i.test(t)) {
+    return (
+      "Este e-mail é o mesmo da conta PagBank da loja — o PagBank não permite. " +
+      "Use outro e-mail para comprar (ex.: um Gmail pessoal diferente do cadastro PagBank)."
+    );
+  }
+  if (
+    /tax_id|document|cpf\/cnpj/i.test(t) &&
+    /obrigat|required|must|inform/i.test(t)
+  ) {
+    return "Informe um CPF válido (só números) nos seus dados para finalizar o pagamento.";
+  }
+  return t;
+}
+
 function formatApiError(
   data: {
-    error_messages?: { code?: string; description?: string; error?: string }[];
+    error_messages?: {
+      code?: string;
+      description?: string;
+      error?: string;
+      parameter_name?: string;
+    }[];
     message?: string;
   },
   status: number
 ) {
-  return (
+  const parts =
     data.error_messages
-      ?.map((e) => e.description || e.error)
-      .filter(Boolean)
-      .join("; ") ||
-    data.message ||
-    `PagBank HTTP ${status}`
-  );
+      ?.map((e) => {
+        const msg = e.description || e.error || e.code;
+        if (!msg) return null;
+        return e.parameter_name ? `${msg} (${e.parameter_name})` : msg;
+      })
+      .filter(Boolean) || [];
+  const raw = parts.length
+    ? parts.join("; ")
+    : data.message || `PagBank HTTP ${status}`;
+  return humanizePagBankError(raw);
 }
 
 type OrderCustomer = {
@@ -185,6 +212,90 @@ async function pagSeguroFetch(
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return { res, data };
+}
+
+/**
+ * Busca na API de taxas o objeto fees.buyer.interest exato para a parcela.
+ * PagBank valida esses números na cobrança — valores inventados/arredondados
+ * geram invalid_parameter em charges[0].amount.fees.buyer.interest.
+ */
+async function lookupBuyerInterestFees(params: {
+  token: string;
+  sandbox: boolean;
+  amountCents: number;
+  installments: number;
+  maxInterestFree: number;
+  bin?: string;
+}): Promise<{ total: number; installments: number } | null> {
+  const n = Math.min(12, Math.max(2, params.installments));
+  const storeFree = Math.min(12, Math.max(0, params.maxInterestFree));
+  const apiNoInterest = storeFree <= 1 ? 0 : storeFree;
+  const bin = String(params.bin || "")
+    .replace(/\D/g, "")
+    .slice(0, 6);
+
+  const qs =
+    `payment_methods=CREDIT_CARD` +
+    `&value=${Math.round(params.amountCents)}` +
+    `&max_installments=${Math.max(n, 12)}` +
+    `&max_installments_no_interest=${apiNoInterest}` +
+    (bin.length >= 6 ? `&credit_card_bin=${bin}` : "");
+
+  try {
+    const { res, data } = await pagSeguroFetch(`/charges/fees/calculate?${qs}`, {
+      method: "GET",
+      sandbox: params.sandbox,
+      token: params.token,
+    });
+    if (!res.ok) return null;
+
+    const cards =
+      (
+        data as {
+          payment_methods?: {
+            credit_card?: Record<
+              string,
+              {
+                installment_plans?: {
+                  installments?: number;
+                  interest_free?: boolean;
+                  amount?: {
+                    value?: number;
+                    fees?: {
+                      buyer?: {
+                        interest?: { total?: number; installments?: number };
+                      };
+                    };
+                  };
+                }[];
+              }
+            >;
+          };
+        }
+      ).payment_methods?.credit_card || {};
+
+    let best: { total: number; installments: number } | null = null;
+    for (const brand of Object.values(cards)) {
+      for (const plan of brand.installment_plans || []) {
+        if (Number(plan.installments) !== n) continue;
+        if (plan.interest_free) continue;
+        const total = Math.round(
+          Number(plan.amount?.fees?.buyer?.interest?.total) || 0
+        );
+        let feeInst = Math.round(
+          Number(plan.amount?.fees?.buyer?.interest?.installments) || 0
+        );
+        if (total <= 0) continue;
+        if (feeInst <= 0) feeInst = Math.max(1, n - apiNoInterest);
+        if (!best || total < best.total) {
+          best = { total, installments: feeInst };
+        }
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
 }
 
 /** Cria ou reutiliza chave pública para encryptCard no browser. */
@@ -310,6 +421,19 @@ export async function createPagSeguroCardOrder(params: {
   amount: number;
   encryptedCard: string;
   installments?: number;
+  /** Juros repassados ao comprador (R$), quando parcelas > sem juros. */
+  interestTotal?: number;
+  /** Juros em centavos (preferencial — valor exato da API de taxas). */
+  interestTotalCents?: number;
+  /**
+   * Qtd de parcelas COM juros no objeto fees (PagBank).
+   * Diferente de `installments` (total no cartão). Ex.: 8x com 4 sem juros → 4.
+   */
+  interestInstallments?: number;
+  /** BIN (6 dígitos) para recalcular taxas na bandeira correta. */
+  cardBin?: string;
+  /** Parcelas sem juros assumidas pela loja (promoção). */
+  maxInterestFree?: number;
   shipping?: ShippingAddr | null;
   shippingCost?: number;
 }) {
@@ -336,6 +460,57 @@ export async function createPagSeguroCardOrder(params: {
   }
 
   const amountCents = toCents(params.amount);
+  const installments = Math.min(
+    12,
+    Math.max(1, Number(params.installments) || 1)
+  );
+  let interestCents = Math.max(
+    0,
+    params.interestTotalCents != null &&
+      Number.isFinite(Number(params.interestTotalCents))
+      ? Math.round(Number(params.interestTotalCents))
+      : toCents(Number(params.interestTotal) || 0)
+  );
+  // PagBank rejeita fees.buyer.interest.installments = total de parcelas;
+  // o campo é a quantidade de parcelas que carregam juros.
+  let feeInterestInstallments = Math.min(
+    installments,
+    Math.max(1, Number(params.interestInstallments) || installments)
+  );
+
+  // Recalcula na API de taxas (fonte da verdade) para evitar invalid_parameter.
+  if (interestCents > 0 && installments > 1) {
+    const looked = await lookupBuyerInterestFees({
+      token,
+      sandbox: s.pagseguro.sandbox,
+      amountCents,
+      installments,
+      maxInterestFree: Number(params.maxInterestFree) || 1,
+      bin: params.cardBin,
+    });
+    if (looked) {
+      interestCents = looked.total;
+      feeInterestInstallments = Math.min(installments, looked.installments);
+    }
+  }
+
+  // PagBank: amount.value = total cobrado do comprador; fees.buyer.interest
+  // informa a parcela de juros embutida nesse total.
+  const chargeAmount: Record<string, unknown> = {
+    value: amountCents + interestCents,
+    currency: "BRL",
+  };
+  if (interestCents > 0 && installments > 1) {
+    chargeAmount.fees = {
+      buyer: {
+        interest: {
+          total: interestCents,
+          installments: feeInterestInstallments,
+        },
+      },
+    };
+  }
+
   const body: Record<string, unknown> = {
     reference_id: params.orderNumber.slice(0, 64),
     customer: buildCustomer(params),
@@ -349,18 +524,20 @@ export async function createPagSeguroCardOrder(params: {
       {
         reference_id: `${params.orderNumber}-chg`.slice(0, 64),
         description: `Pedido ${params.orderNumber}`.slice(0, 64),
-        amount: { value: amountCents, currency: "BRL" },
+        amount: chargeAmount,
         payment_method: {
           type: "CREDIT_CARD",
-          installments: Math.min(12, Math.max(1, Number(params.installments) || 1)),
+          installments,
           capture: true,
+          soft_descriptor: "Majeste",
           card: {
             encrypted: params.encryptedCard,
             store: false,
-            holder: {
-              name: params.name.slice(0, 120),
-              tax_id: taxId,
-            },
+          },
+          // holder fica no payment_method (não dentro de card) — exigência PagBank
+          holder: {
+            name: params.name.slice(0, 30),
+            tax_id: taxId,
           },
         },
       },
@@ -380,8 +557,14 @@ export async function createPagSeguroCardOrder(params: {
   const order = data as PagBankOrderResponse;
   if (!res.ok) {
     const detail = formatApiError(order, res.status);
+    console.error(
+      "[pagseguro card]",
+      res.status,
+      detail,
+      JSON.stringify(data).slice(0, 1500)
+    );
     const auth = authFailMessage(s.pagseguro.sandbox, res.status, detail);
-    throw new Error(auth || detail);
+    throw new Error(auth || detail || "PagBank recusou o pagamento do cartão");
   }
 
   const charge = order.charges?.[0];
@@ -394,9 +577,18 @@ export async function createPagSeguroCardOrder(params: {
     status === "DENIED";
 
   if (declined) {
-    const msg =
+    const raw = String(charge?.payment_response?.message || "").toUpperCase();
+    const code = String(charge?.payment_response?.code || "");
+    let msg =
       charge?.payment_response?.message ||
       "Pagamento recusado. Verifique os dados do cartão ou escolha outro meio.";
+    if (params.amount > 0 && params.amount < 1) {
+      msg =
+        "Valor abaixo do mínimo do cartão (R$ 1,00). Ajuste o pedido ou pague com Pix.";
+    } else if (raw.includes("VERIFIQUE") || code === "20007") {
+      msg =
+        "Cartão recusado pelo banco/PagBank. Confira número, validade e CVV, ou tente outro cartão / Pix.";
+    }
     throw Object.assign(new Error(msg), { code: "CARD_DECLINED", status });
   }
 

@@ -127,15 +127,28 @@ export function TrackingLookup({
             </a>
           </div>
 
-          {result.tracking.error ? (
+          {result.tracking.error && result.tracking.events.length === 0 ? (
             <p className="text-sm text-muted">{result.tracking.error}</p>
           ) : null}
 
           {result.tracking.events.length > 0 ? (
-            <ol className="space-y-3 border-t border-line pt-4">
+            <ol className="space-y-0 border-t border-line pt-4">
               {result.tracking.events.map((ev, i) => (
-                <li key={`${ev.date}-${i}`} className="text-sm">
-                  <p className="font-medium text-[#2a2420]">{ev.description}</p>
+                <li
+                  key={`${ev.date}-${i}`}
+                  className="relative pl-5 pb-4 last:pb-0"
+                >
+                  <span
+                    className={`absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ${
+                      i === 0 ? "bg-[#b08968]" : "bg-[#2a2420]/25"
+                    }`}
+                  />
+                  {i < result.tracking!.events.length - 1 ? (
+                    <span className="absolute left-[4px] top-4 bottom-0 w-px bg-[#2a2420]/12" />
+                  ) : null}
+                  <p className="font-medium text-[#2a2420] text-sm leading-snug">
+                    {ev.description}
+                  </p>
                   <p className="text-xs text-muted mt-0.5">
                     {ev.date ? formatDateTimeBR(ev.date, { seconds: true }) : "—"}
                     {ev.location ? ` · ${ev.location}` : ""}

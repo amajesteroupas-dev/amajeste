@@ -83,6 +83,19 @@ model User {
   customer     Customer?
 }
 
+/// Token de redefinição de senha (loja / cliente). O valor bruto só vai no e-mail.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 model Category {
   id          String          @id @default(cuid())
   name        String

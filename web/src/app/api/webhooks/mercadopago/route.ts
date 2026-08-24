@@ -5,7 +5,7 @@ import { getPayment } from "@/lib/payments";
 import { CashEntryType, OrderStatus, PaymentStatus } from "@prisma/client";
 import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
 import {
-  commitOrderStockHold,
+  finalizeOrderStockOnPaid,
   releaseOrderStockHold,
   reservationDeadline,
 } from "@/lib/order-stock-reserve";
@@ -128,8 +128,7 @@ export async function POST(req: NextRequest) {
           ...(paymentStatus === PaymentStatus.APPROVED
             ? { reservedUntil: null }
             : {}),
-          // Renova janela de reserva para nova tentativa de pagamento
-          ...(paymentFailedKeepOrder && payment.order.stockHeld
+          ...(paymentFailedKeepOrder
             ? { reservedUntil: reservationDeadline() }
             : {}),
         },
@@ -152,6 +151,18 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      if (paymentFailedKeepOrder && payment.order.stockHeld) {
+        await releaseOrderStockHold(
+          payment.orderId,
+          "Pagamento recusado — estoque liberado",
+          tx
+        );
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: { reservedUntil: reservationDeadline(), stockHeld: false },
+        });
+      }
+
       // Só devolve estoque em reembolso (venda já paga desfeita)
       if (orderStatus === OrderStatus.REFUNDED && payment.order.stockHeld) {
         await releaseOrderStockHold(
@@ -166,7 +177,7 @@ export async function POST(req: NextRequest) {
       paymentStatus === PaymentStatus.APPROVED &&
       payment.status !== PaymentStatus.APPROVED
     ) {
-      await commitOrderStockHold(payment.orderId);
+      await finalizeOrderStockOnPaid(payment.orderId);
       void onOrderPaidSideEffects(payment.orderId);
     }
 

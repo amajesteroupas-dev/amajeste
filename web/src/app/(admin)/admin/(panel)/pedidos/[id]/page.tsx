@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateTimeBR } from "@/lib/utils";
+import { formatCpf } from "@/lib/cpf";
 import { ensureSequentialOrderNumbers } from "@/lib/order-number";
 import {
   orderStatusLabel,
@@ -9,6 +10,7 @@ import {
   paymentStatusLabel,
 } from "@/lib/order-labels";
 import { OrderStatusForm } from "@/components/admin/OrderStatusForm";
+import { CancelOrderButton } from "@/components/admin/CancelOrderButton";
 import { OrderMelhorEnvioPanel } from "@/components/admin/OrderMelhorEnvioPanel";
 import { OrderReceipt } from "@/components/store/OrderReceipt";
 import {
@@ -100,6 +102,19 @@ export default async function OrderDetailPage({ params }: Props) {
         trackingCode={order.trackingCode || ""}
       />
 
+      {["PENDING", "PAID", "PROCESSING"].includes(order.status) ? (
+        <div className="border border-[var(--rose)]/30 bg-white p-4 space-y-2">
+          <p className="text-sm text-[#5c534c]">
+            Cancelar devolve as peças ao estoque e estorna o valor no caixa
+            (vale também para venda manual do WhatsApp).
+          </p>
+          <CancelOrderButton
+            orderId={order.id}
+            orderNumber={order.orderNumber}
+          />
+        </div>
+      ) : null}
+
       <OrderMelhorEnvioPanel
         orderId={order.id}
         orderNumber={order.orderNumber}
@@ -122,6 +137,9 @@ export default async function OrderDetailPage({ params }: Props) {
           paymentStatus: order.payment?.status,
           pixCode: pixCode || null,
           pixQrDataUrl,
+          reservedUntil: order.reservedUntil
+            ? order.reservedUntil.toISOString()
+            : null,
           boletoBarcode: order.payment?.boletoBarcode,
           boletoUrl: order.payment?.boletoUrl,
           localDeliveryWhatsapp,
@@ -137,8 +155,40 @@ export default async function OrderDetailPage({ params }: Props) {
 
       <section className="border border-line bg-surface p-5 space-y-2 text-sm">
         <p>
-          <strong>Cliente:</strong> {order.customer?.name || order.guestName} (
-          {order.guestEmail || order.customer?.email})
+          <strong>Cliente:</strong>{" "}
+          {order.customerId ? (
+            <Link
+              href={`/admin/clientes/${order.customerId}`}
+              className="text-rose-dark underline-offset-2 hover:underline"
+            >
+              {order.customer?.name || order.guestName}
+            </Link>
+          ) : (
+            order.customer?.name || order.guestName
+          )}{" "}
+          ({order.guestEmail || order.customer?.email})
+        </p>
+        <p>
+          <strong>CPF:</strong>{" "}
+          {order.customer?.cpf ? (
+            <code className="font-mono">{formatCpf(order.customer.cpf)}</code>
+          ) : (
+            <span className="text-rose-dark">
+              Não informado
+              {order.customerId ? (
+                <>
+                  {" "}
+                  —{" "}
+                  <Link
+                    href={`/admin/clientes/${order.customerId}`}
+                    className="underline"
+                  >
+                    cadastrar no cliente
+                  </Link>
+                </>
+              ) : null}
+            </span>
+          )}
         </p>
         <p>
           <strong>Telefone:</strong>{" "}

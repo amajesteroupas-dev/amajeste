@@ -6,6 +6,7 @@ import {
   paymentStatusLabel,
 } from "@/lib/order-labels";
 import { PixCopyPaste } from "@/components/store/PixCopyPaste";
+import { PixPaymentTimer } from "@/components/store/PixPaymentTimer";
 import { checkoutSuccessPath } from "@/lib/order-access";
 
 export type OrderReceiptData = {
@@ -16,6 +17,8 @@ export type OrderReceiptData = {
   paymentStatus?: string | null;
   pixCode?: string | null;
   pixQrDataUrl?: string | null;
+  /** ISO — prazo da reserva / pagamento Pix */
+  reservedUntil?: string | null;
   boletoBarcode?: string | null;
   boletoUrl?: string | null;
   localDeliveryWhatsapp?: string | null;
@@ -82,7 +85,10 @@ export function OrderReceipt({
   /** Botão de retorno à loja (só na tela do cliente). */
   showStoreCta?: boolean;
 }) {
-  const isPix = Boolean(order.pixCode) || order.paymentMethod === "pix";
+  const isPix =
+    Boolean(order.pixCode) ||
+    order.paymentMethod === "pix" ||
+    order.paymentMethod === "pagseguro_pix";
   const isBoleto = Boolean(order.boletoUrl || order.boletoBarcode);
   const isWhatsapp = order.paymentMethod === "whatsapp";
   const isCardPaid =
@@ -93,6 +99,8 @@ export function OrderReceipt({
     order.status === "SHIPPED" ||
     order.status === "DELIVERED" ||
     order.paymentStatus === "APPROVED";
+  const cancelled = order.status === "CANCELLED";
+  const pixPending = isPix && Boolean(order.pixCode) && !paidLike;
 
   const note = fitnessNoteForOrder(String(order.orderNumber));
 
@@ -155,6 +163,19 @@ export function OrderReceipt({
 
       {isPix && order.pixCode ? (
         <div className="mt-2 space-y-4 border-t border-line pt-4">
+          {pixPending && order.reservedUntil ? (
+            <PixPaymentTimer
+              expiresAt={order.reservedUntil}
+              paid={paidLike}
+              cancelled={cancelled}
+            />
+          ) : null}
+          {pixPending && !order.reservedUntil ? (
+            <p className="text-xs text-[#5c534c] leading-relaxed border border-[#2a2420]/10 bg-[#faf7f3] px-3 py-2">
+              Pague em até <strong>5 minutos</strong>. Se não for pago nesse
+              prazo, o pedido é cancelado e o produto volta para o estoque.
+            </p>
+          ) : null}
           <div className="space-y-2">
             <p className="text-sm font-medium text-[#2a2420]">QR Code Pix</p>
             {order.pixQrDataUrl ? (

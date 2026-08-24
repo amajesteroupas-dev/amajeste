@@ -14,6 +14,7 @@ import {
   cssFromCtaButton,
   cssFromLayer,
   getLayerStyle,
+  layerInkOnPanel,
   parseTextStyle,
   renderLayerText,
   runsForText,
@@ -48,6 +49,14 @@ import {
   type BannerVideoLayout,
 } from "@/lib/banner-videos";
 import { BannerCanvaPanel } from "@/components/admin/BannerCanvaPanel";
+import { BannerArtStudio } from "@/components/admin/BannerArtStudio";
+import { BannerArtOverlay } from "@/components/store/BannerArtOverlay";
+import {
+  artHasCopy,
+  artLayersFromStyle,
+  withArtLayers,
+  type BannerArtLayer,
+} from "@/lib/banner-art";
 import { cutoutVideoFromUrl } from "@/lib/video-cutout-client";
 
 type MediaItem = {
@@ -155,28 +164,15 @@ function mediaStyle(b: Banner): CSSProperties {
 }
 
 /**
- * Mesmo enquadramento da loja (BannerCarousel.videoClipStyle):
- * cutout → contain + fundo transparente; cover/contain conforme imageFit.
+ * Mesmo enquadramento da loja: pessoa inteira (contain), sem recorte.
  */
-function adminVideoClipStyle(
-  clip: BannerVideoClip,
-  b: Banner
-): CSSProperties {
+function adminVideoClipStyle(clip: BannerVideoClip): CSSProperties {
   const cutout = Boolean(clip.cutout || isCutoutVideoUrl(clip.url));
-  const fit = cutout || b.imageFit === "contain" ? "contain" : "cover";
-  const frame = getClipFrame(clip, b);
-  const panX = ((50 - frame.focalX) / 50) * 32;
-  const panY = ((50 - frame.focalY) / 50) * 32;
   return {
-    objectFit: fit,
-    objectPosition:
-      fit === "cover"
-        ? `${frame.focalX}% ${frame.focalY}%`
-        : "center center",
-    transform: `translate(${panX}%, ${panY}%) scale(${frame.zoom})`,
-    transformOrigin: "center center",
+    objectFit: "contain",
+    objectPosition: cutout ? "center bottom" : "center center",
     pointerEvents: "none",
-    background: cutout ? "transparent" : undefined,
+    background: cutout ? "transparent" : "var(--banner-video-bg, #f0e8df)",
   };
 }
 
@@ -237,6 +233,8 @@ export function BannerEditor({ bannerId }: Props) {
   const [videoCutoutBank, setVideoCutoutBank] = useState<VideoBankItem[]>([]);
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoMsg, setVideoMsg] = useState("");
+  const [artEditMode, setArtEditMode] = useState(true);
+  const [artSelectedId, setArtSelectedId] = useState<string | null>(null);
   const drag = useRef<{ x: number; y: number; clipIndex: number } | null>(
     null
   );
@@ -359,7 +357,7 @@ export function BannerEditor({ bannerId }: Props) {
         videoUrl: list[0]?.url ?? null,
         videoSeconds: list[0]?.seconds ?? null,
         active: list.length > 0 ? true : prev.active,
-        // Corpo inteiro por padrão ao adicionar o 1º vídeo
+        // Pessoa inteira visível no quadro largo (não cortar cabeça/pés).
         ...(addingFirst
           ? { imageFit: "contain", imageZoom: 1, focalX: 50, focalY: 50 }
           : {}),
@@ -829,6 +827,15 @@ export function BannerEditor({ bannerId }: Props) {
 
   const current = banner;
   const layout = current.layout || "studio";
+  const artLayers = artLayersFromStyle(banner.textStyle);
+
+  function setArtLayers(next: BannerArtLayer[]) {
+    setBanner((prev) =>
+      prev
+        ? { ...prev, textStyle: withArtLayers(prev.textStyle, next) }
+        : prev
+    );
+  }
 
   function layerPlainText(key: TextLayerKey): string {
     if (key === "title") return current.title || "";
@@ -945,7 +952,8 @@ export function BannerEditor({ bannerId }: Props) {
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <div className="bg-white border border-black/10 p-3 space-y-3">
           <p className="text-xs uppercase tracking-wider text-muted">
-            Preview — arraste a foto ou o vídeo para enquadrar
+            Preview — arraste o vídeo para enquadrar, ou ative Overlay para
+            editar texto e brilhos em cima
           </p>
 
           <BannerTextToolbar
@@ -955,7 +963,12 @@ export function BannerEditor({ bannerId }: Props) {
               setActiveLayer(layer);
               setTextSelection(null);
             }}
-            onChange={(textStyle) => setBanner({ ...banner, textStyle })}
+            onChange={(textStyle) =>
+              setBanner({
+                ...banner,
+                textStyle: withArtLayers(textStyle, artLayers),
+              })
+            }
             layerText={layerPlainText(activeLayer)}
             selection={textSelection}
             textAlign={banner.textAlign}
@@ -983,9 +996,9 @@ export function BannerEditor({ bannerId }: Props) {
             style={
               (banner.videoPlaylist?.length || 0) > 0 && layout !== "promo"
                 ? {
-                    background: banner.panelColor || banner.bgColor,
+                    background: banner.bgColor || "#f0e8df",
                     ["--banner-video-bg" as string]:
-                      banner.panelColor || banner.bgColor,
+                      banner.bgColor || "#f0e8df",
                   }
                 : layout === "studio" || layout === "cutouts"
                   ? { background: banner.bgColor }
@@ -1004,231 +1017,178 @@ export function BannerEditor({ bannerId }: Props) {
           >
             {(banner.videoPlaylist?.length || 0) > 0 && layout !== "promo" ? (
               <div
-                className="banner-video-clean"
+                className={`banner-video-hero${
+                  banner.videoLayout === "pair" &&
+                  (banner.videoPlaylist?.length || 0) >= 2
+                    ? " is-pair"
+                    : ""
+                }${
+                  artHasCopy(artLayers) && !banner.ctaLabel
+                    ? " is-art-only"
+                    : ""
+                }`}
                 style={{
-                  background: banner.panelColor || banner.bgColor,
+                  background: banner.bgColor || "#f0e8df",
                   ["--banner-video-bg" as string]:
-                    banner.panelColor || banner.bgColor,
+                    banner.bgColor || "#f0e8df",
                 }}
               >
-                {banner.videoLayout === "pair" &&
-                (banner.videoPlaylist?.length || 0) >= 2 ? (
-                  <div className="banner-video-pair">
-                    {banner.videoPlaylist.slice(0, 2).map((clip, i) => {
-                      const cutout =
-                        clip.cutout || isCutoutVideoUrl(clip.url);
-                      const mediaClass = cutout
-                        ? "banner-video-cutout pointer-events-none"
-                        : "pointer-events-none";
-                      return (
-                        <div
-                          key={`prev-pair-${i}-${clip.url}`}
-                          className="banner-video-cell"
-                          style={{
-                            background: banner.panelColor || banner.bgColor,
-                          }}
+                {(() => {
+                  const pair =
+                    banner.videoLayout === "pair" &&
+                    (banner.videoPlaylist?.length || 0) >= 2;
+                  const clips = pair
+                    ? banner.videoPlaylist.slice(0, 2)
+                    : banner.videoPlaylist.slice(0, 1);
+                  const titleOnCream = layerInkOnPanel(
+                    getLayerStyle(banner.textStyle, "title"),
+                    "#5c4336"
+                  );
+                  const subOnCream = layerInkOnPanel(
+                    getLayerStyle(banner.textStyle, "subtitle"),
+                    "#5c534c"
+                  );
+                  const taglineOnCream = layerInkOnPanel(
+                    getLayerStyle(banner.textStyle, "tagline"),
+                    "#8a7468"
+                  );
+                  const hideCreamText = artHasCopy(artLayers);
+                  const copy = (
+                    <div className="banner-video-hero-copy pointer-events-none">
+                      {!hideCreamText && banner.tagline?.trim() ? (
+                        <p
+                          className="hero-kicker"
+                          style={cssFromLayer(taglineOnCream, { scale: 0.8 })}
                         >
-                          {isAnimatedImageCutout(clip.url) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={clip.url}
-                              alt=""
-                              className={mediaClass}
-                              draggable={false}
-                              style={adminVideoClipStyle(clip, banner)}
-                            />
-                          ) : (
-                            <video
-                              src={clip.url}
-                              className={mediaClass}
-                              muted
-                              playsInline
-                              autoPlay
-                              loop
-                              draggable={false}
-                              style={adminVideoClipStyle(clip, banner)}
-                            />
-                          )}
-                          <div
-                            className="banner-video-drag-layer"
-                            aria-label={`Arrastar vídeo ${i + 1}`}
-                            onPointerDown={(e) => onVideoPointerDown(e, i)}
-                            onPointerMove={onVideoPointerMove}
-                            onPointerUp={onVideoPointerUp}
-                            onPointerCancel={onVideoPointerUp}
-                          />
-                          <span className="banner-video-cell-label">
-                            Vídeo {i + 1}
+                          {renderLayerText(taglineOnCream, banner.tagline, {
+                            scale: 0.8,
+                          })}
+                        </p>
+                      ) : null}
+                      {!hideCreamText && banner.title?.trim() ? (
+                        <h2
+                          className="banner-studio-title"
+                          style={cssFromLayer(titleOnCream, { scale: 0.72 })}
+                        >
+                          {renderLayerText(titleOnCream, banner.title, {
+                            scale: 0.72,
+                          })}
+                        </h2>
+                      ) : !hideCreamText && !banner.title?.trim() ? (
+                        <p className="text-xs uppercase tracking-widest text-muted">
+                          Overlay no vídeo · pessoa inteira
+                        </p>
+                      ) : null}
+                      {!hideCreamText && banner.subtitle?.trim() ? (
+                        <p
+                          className="banner-studio-sub"
+                          style={cssFromLayer(subOnCream, { scale: 0.8 })}
+                        >
+                          {renderLayerText(subOnCream, banner.subtitle, {
+                            scale: 0.8,
+                          })}
+                        </p>
+                      ) : null}
+                      {banner.ctaLabel ? (
+                        <div className="banner-studio-cta">
+                          <span
+                            className="banner-cta-btn !pointer-events-none"
+                            style={cssFromCtaButton(
+                              getLayerStyle(banner.textStyle, "cta"),
+                              { scale: 0.75 }
+                            )}
+                          >
+                            {renderLayerText(
+                              getLayerStyle(banner.textStyle, "cta"),
+                              banner.ctaLabel,
+                              { scale: 0.75 }
+                            )}
                           </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div
-                    className="banner-video-single banner-video-cell"
-                    style={{
-                      background: banner.panelColor || banner.bgColor,
-                    }}
-                  >
-                    {(() => {
-                      const clip = banner.videoPlaylist[0];
-                      if (!clip) return null;
-                      const cutout =
-                        clip.cutout || isCutoutVideoUrl(clip.url);
-                      const mediaClass = cutout
-                        ? "banner-video-cutout pointer-events-none"
-                        : "pointer-events-none";
-                      return (
-                        <>
-                          {isAnimatedImageCutout(clip.url) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={clip.url}
-                              src={clip.url}
-                              alt=""
-                              className={mediaClass}
-                              draggable={false}
-                              style={adminVideoClipStyle(clip, banner)}
-                            />
-                          ) : (
-                            <video
-                              key={clip.url}
-                              src={clip.url}
-                              className={mediaClass}
-                              muted
-                              playsInline
-                              autoPlay
-                              loop
-                              draggable={false}
-                              poster={
-                                cutout
-                                  ? undefined
-                                  : banner.imageUrl || undefined
-                              }
-                              style={adminVideoClipStyle(clip, banner)}
-                            />
-                          )}
-                          <div
-                            className="banner-video-drag-layer"
-                            aria-label="Arrastar vídeo"
-                            onPointerDown={(e) => onVideoPointerDown(e, 0)}
-                            onPointerMove={onVideoPointerMove}
-                            onPointerUp={onVideoPointerUp}
-                            onPointerCancel={onVideoPointerUp}
+                      ) : null}
+                    </div>
+                  );
+                  const media = (clip: (typeof clips)[0], i: number) => {
+                    const cutout =
+                      clip.cutout || isCutoutVideoUrl(clip.url);
+                    const mediaClass = cutout
+                      ? "banner-video-cutout pointer-events-none"
+                      : "pointer-events-none";
+                    return (
+                      <div
+                        key={`prev-hero-${i}-${clip.url}`}
+                        className="banner-video-hero-media"
+                      >
+                        {isAnimatedImageCutout(clip.url) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={clip.url}
+                            alt=""
+                            className={mediaClass}
+                            draggable={false}
+                            style={adminVideoClipStyle(clip)}
                           />
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-                {(banner.title?.trim() ||
-                  banner.subtitle?.trim() ||
-                  banner.highlight?.trim() ||
-                  banner.promoText?.trim() ||
-                  banner.tagline?.trim() ||
-                  banner.ctaLabel) && (
-                  <div
-                    className={`banner-video-clean-copy pointer-events-none ${
-                      banner.textAlign === "center"
-                        ? "items-center text-center has-text-top"
-                        : banner.textAlign === "right"
-                          ? "items-end text-right"
-                          : "items-start text-left"
-                    }`}
-                  >
-                    {banner.tagline?.trim() ? (
-                      <p
-                        style={cssFromLayer(
-                          getLayerStyle(banner.textStyle, "tagline"),
-                          { scale: 0.75 }
+                        ) : (
+                          <video
+                            src={clip.url}
+                            className={mediaClass}
+                            muted
+                            playsInline
+                            autoPlay
+                            loop
+                            draggable={false}
+                            style={adminVideoClipStyle(clip)}
+                          />
                         )}
-                      >
-                        {renderLayerText(
-                          getLayerStyle(banner.textStyle, "tagline"),
-                          banner.tagline,
-                          { scale: 0.75 }
-                        )}
-                      </p>
-                    ) : null}
-                    {banner.highlight?.trim() ? (
-                      <p
-                        style={cssFromLayer(
-                          getLayerStyle(banner.textStyle, "highlight"),
-                          { scale: 0.75 }
-                        )}
-                      >
-                        {renderLayerText(
-                          getLayerStyle(banner.textStyle, "highlight"),
-                          banner.highlight,
-                          { scale: 0.75 }
-                        )}
-                      </p>
-                    ) : null}
-                    {banner.title?.trim() ? (
-                      <h2
-                        className="banner-studio-title"
-                        style={cssFromLayer(
-                          getLayerStyle(banner.textStyle, "title"),
-                          { scale: 0.72 }
-                        )}
-                      >
-                        {renderLayerText(
-                          getLayerStyle(banner.textStyle, "title"),
-                          banner.title,
-                          { scale: 0.72 }
-                        )}
-                      </h2>
-                    ) : null}
-                    {banner.subtitle?.trim() ? (
-                      <p
-                        className="banner-studio-sub"
-                        style={cssFromLayer(
-                          getLayerStyle(banner.textStyle, "subtitle"),
-                          { scale: 0.8 }
-                        )}
-                      >
-                        {renderLayerText(
-                          getLayerStyle(banner.textStyle, "subtitle"),
-                          banner.subtitle,
-                          { scale: 0.8 }
-                        )}
-                      </p>
-                    ) : null}
-                    {banner.promoText?.trim() ? (
-                      <p
-                        className="banner-studio-sub"
-                        style={cssFromLayer(
-                          getLayerStyle(banner.textStyle, "promo"),
-                          { scale: 0.8 }
-                        )}
-                      >
-                        {renderLayerText(
-                          getLayerStyle(banner.textStyle, "promo"),
-                          banner.promoText,
-                          { scale: 0.8 }
-                        )}
-                      </p>
-                    ) : null}
-                    {banner.ctaLabel ? (
-                      <div className="mt-3">
-                        <span
-                          className="banner-cta-btn !pointer-events-none"
-                          style={cssFromCtaButton(
-                            getLayerStyle(banner.textStyle, "cta"),
-                            { scale: 0.75 }
-                          )}
-                        >
-                          {renderLayerText(
-                            getLayerStyle(banner.textStyle, "cta"),
-                            banner.ctaLabel,
-                            { scale: 0.75 }
-                          )}
+                        {i === 0 && artLayers.length > 0 ? (
+                          <BannerArtOverlay
+                            layers={artLayers}
+                            editable={artEditMode}
+                            selectedId={artSelectedId}
+                            onSelect={setArtSelectedId}
+                            onMove={(id, x, y) =>
+                              setArtLayers(
+                                artLayers.map((l) =>
+                                  l.id === id ? { ...l, x, y } : l
+                                )
+                              )
+                            }
+                          />
+                        ) : null}
+                        {!artEditMode || artLayers.length === 0 ? (
+                        <div
+                          className="banner-video-drag-layer"
+                          aria-label={`Arrastar vídeo ${i + 1}`}
+                          onPointerDown={(e) => onVideoPointerDown(e, i)}
+                          onPointerMove={onVideoPointerMove}
+                          onPointerUp={onVideoPointerUp}
+                          onPointerCancel={onVideoPointerUp}
+                        />
+                        ) : null}
+                        <span className="banner-video-cell-label">
+                          Vídeo {i + 1}
                         </span>
                       </div>
-                    ) : null}
-                  </div>
-                )}
+                    );
+                  };
+                  const showCopy =
+                    !hideCreamText || Boolean(banner.ctaLabel?.trim());
+                  if (pair) {
+                    return (
+                      <>
+                        {media(clips[0], 0)}
+                        {showCopy ? copy : null}
+                        {media(clips[1], 1)}
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      {showCopy ? copy : null}
+                      {clips[0] ? media(clips[0], 0) : null}
+                    </>
+                  );
+                })()}
               </div>
             ) : null}
             {layout === "promo" && (
@@ -1360,7 +1320,7 @@ export function BannerEditor({ bannerId }: Props) {
                             alt=""
                             className="banner-promo-video banner-video-cutout"
                             draggable={false}
-                            style={adminVideoClipStyle(clip, banner)}
+                            style={adminVideoClipStyle(clip)}
                           />
                         );
                       }
@@ -1380,7 +1340,7 @@ export function BannerEditor({ bannerId }: Props) {
                           poster={
                             cutout ? undefined : banner.imageUrl || undefined
                           }
-                          style={adminVideoClipStyle(clip, banner)}
+                          style={adminVideoClipStyle(clip)}
                         />
                       );
                     })()
@@ -2071,6 +2031,17 @@ export function BannerEditor({ bannerId }: Props) {
               </p>
             ) : null}
           </div>
+
+          {(banner.videoPlaylist || []).length > 0 ? (
+            <BannerArtStudio
+              layers={artLayers}
+              selectedId={artSelectedId}
+              artEditMode={artEditMode}
+              onArtEditMode={setArtEditMode}
+              onChange={setArtLayers}
+              onSelect={setArtSelectedId}
+            />
+          ) : null}
 
           <div>
             <p className="text-xs uppercase tracking-wider text-muted mb-2">

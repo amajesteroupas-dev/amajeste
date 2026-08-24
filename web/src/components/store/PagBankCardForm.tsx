@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { PaymentFlagsRow } from "@/components/store/PaymentFlags";
+import { useEffect, useState } from "react";
+import { PaymentFlagsRow, detectCardBrand } from "@/components/store/PaymentFlags";
 import { formatBRL } from "@/lib/utils";
 
 declare global {
@@ -26,10 +26,24 @@ declare global {
 const SDK_SRC =
   "https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js";
 
+export type InstallmentOption = {
+  installments: number;
+  installmentValue: number;
+  totalAmount: number;
+  interestFree: boolean;
+  interestTotal?: number;
+  /** Juros em centavos (exato da API). */
+  interestTotalCents?: number;
+  /** Parcelas com juros no fees PagBank (≠ total de parcelas). */
+  interestInstallments?: number;
+};
+
 type Props = {
   publicKey: string;
-  /** Total da loja (já com/sem promoção conforme parcelas). */
-  amount?: number;
+  /** Valor total a pagar (R$) — usado para exibir as parcelas. */
+  amount: number;
+  /** Até quantas parcelas sem juros a loja assume (padrão 1 = à vista). */
+  maxInterestFree?: number;
   busy?: boolean;
   defaultHolder?: string;
   defaultTaxId?: string;
@@ -40,6 +54,10 @@ type Props = {
     installments: number;
     holderName: string;
     holderTaxId: string;
+    interestTotal?: number;
+    interestTotalCents?: number;
+    interestInstallments?: number;
+    cardBin?: string;
   }) => Promise<void>;
 };
 
@@ -91,9 +109,40 @@ function loadSdk(): Promise<void> {
   });
 }
 
+function buildLocalInstallments(
+  amount: number,
+  maxInterestFree: number
+): InstallmentOption[] {
+  const total = Math.max(0, Number(amount) || 0);
+  const freeMax = Math.max(1, Math.min(12, maxInterestFree || 1));
+  return Array.from({ length: freeMax }, (_, i) => {
+    const n = i + 1;
+    const installmentValue = Math.round((total / n) * 100) / 100;
+    return {
+      installments: n,
+      installmentValue,
+      totalAmount: total,
+      interestFree: true,
+      interestTotal: 0,
+      interestInstallments: 0,
+    };
+  });
+}
+
+function optionLabel(opt: InstallmentOption) {
+  const parcela = formatBRL(opt.installmentValue);
+  if (opt.interestFree) {
+    return opt.installments === 1
+      ? `1x de ${parcela} sem juros`
+      : `${opt.installments}x de ${parcela} sem juros`;
+  }
+  return `${opt.installments}x de ${parcela} com juros · total ${formatBRL(opt.totalAmount)}`;
+}
+
 export function PagBankCardForm({
   publicKey,
-  amount = 0,
+  amount,
+  maxInterestFree = 1,
   busy,
   defaultHolder = "",
   defaultTaxId = "",
@@ -108,6 +157,11 @@ export function PagBankCardForm({
   const [holder, setHolder] = useState(defaultHolder);
   const [taxId, setTaxId] = useState(formatCpf(defaultTaxId));
   const [installments, setInstallments] = useState(1);
+  const [options, setOptions] = useState<InstallmentOption[]>(() =>
+    buildLocalInstallments(amount, maxInterestFree)
+  );
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsHint, setOptionsHint] = useState("");
   const [localError, setLocalError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -149,11 +203,89 @@ export function PagBankCardForm({
     };
   }, []);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    let cancelled = false;
+    const fallback = buildLocalInstallments(amount, maxInterestFree);
+    setOptions(fallback);
+    setOptionsHint("");
+
+    const cents = Math.round(Math.max(0, Number(amount) || 0) * 100);
+    if (cents < 100) return;
+
+    const bin = onlyDigits(cardNumber).slice(0, 6);
+    // Sem BIN ainda: carrega plano genérico; com 6 dígitos, recalcula pela bandeira.
+    const timer = window.setTimeout(() => {
+      setOptionsLoading(true);
+      (async () => {
+        try {
+          const qs = new URLSearchParams({
+            value: String(cents),
+            maxInstallments: "12",
+            maxInterestFree: String(Math.max(1, maxInterestFree)),
+          });
+          if (bin.length >= 6) qs.set("bin", bin);
+          const res = await fetch(
+            `/api/payments/pagseguro/installments?${qs}`
+          );
+          const data = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const parsed = Array.isArray(data.options)
+            ? (data.options as InstallmentOption[])
+            : [];
+          if (parsed.length > 0) {
+            const free = parsed.filter((o) => o.interestFree);
+            const withInterest = parsed.filter(
+              (o) =>
+                !o.interestFree &&
+                Number(o.interestTotal) > 0 &&
+                o.installments > maxInterestFree
+            );
+            const merged = [...free, ...withInterest].sort(
+              (a, b) => a.installments - b.installments
+            );
+            setOptions(merged.length ? merged : fallback);
+            setOptionsHint(
+              withInterest.length
+                ? ""
+                : "Parcelas com juros indisponíveis no momento — só à vista sem juros."
+            );
+          } else {
+            setOptions(fallback);
+            setOptionsHint(
+              "Parcelas com juros indisponíveis no momento — só à vista sem juros."
+            );
+          }
+        } catch {
+          if (!cancelled) {
+            setOptions(fallback);
+            setOptionsHint(
+              "Parcelas com juros indisponíveis no momento — só à vista sem juros."
+            );
+          }
+        } finally {
+          if (!cancelled) setOptionsLoading(false);
+        }
+      })();
+    }, bin.length >= 6 ? 350 : 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [amount, maxInterestFree, cardNumber]);
+
+  async function handlePay() {
     setLocalError("");
+    if (amount > 0 && amount < 1) {
+      setLocalError(
+        "O valor mínimo para cartão é R$ 1,00. Ajuste o pedido ou use Pix."
+      );
+      return;
+    }
     if (!publicKey) {
-      setLocalError("Chave pública PagBank ausente. Configure em Admin → Pagamentos.");
+      setLocalError(
+        "Chave pública PagBank ausente. Configure em Admin → Pagamentos."
+      );
       return;
     }
     if (!window.PagSeguro?.encryptCard) {
@@ -209,6 +341,7 @@ export function PagBankCardForm({
       return;
     }
 
+    const selected = options.find((o) => o.installments === installments);
     setSubmitting(true);
     try {
       await onPay({
@@ -216,6 +349,20 @@ export function PagBankCardForm({
         installments,
         holderName,
         holderTaxId,
+        interestTotal:
+          selected && !selected.interestFree
+            ? Math.max(0, Number(selected.interestTotal) || 0)
+            : undefined,
+        interestTotalCents:
+          selected && !selected.interestFree
+            ? Math.max(0, Number(selected.interestTotalCents) || 0) ||
+              undefined
+            : undefined,
+        interestInstallments:
+          selected && !selected.interestFree
+            ? Math.max(1, Number(selected.interestInstallments) || installments)
+            : undefined,
+        cardBin: number.slice(0, 6),
       });
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Falha no pagamento");
@@ -225,6 +372,7 @@ export function PagBankCardForm({
   }
 
   const disabled = busy || submitting;
+  const brand = detectCardBrand(cardNumber);
 
   if (sdkError) {
     return <p className="text-xs text-[#8a3a3a]">{sdkError}</p>;
@@ -235,13 +383,15 @@ export function PagBankCardForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
-      <div>
-        <p className="text-xs font-medium text-[#2a2420] mb-1.5">
-          Cartão de crédito ou débito
-        </p>
-        <PaymentFlagsRow variant="full" showPix={false} size="sm" />
-      </div>
+    // Não usar <form> aqui: fica dentro do <form> do checkout e o navegador
+    // ignora formulários aninhados — o botão Pagar acabava não funcionando.
+    <div className="space-y-3">
+      <PaymentFlagsRow
+        variant="full"
+        showPix={false}
+        size="sm"
+        activeBrand={brand}
+      />
 
       <label className="block text-xs text-[#5c534c]">
         Número do cartão
@@ -313,48 +463,39 @@ export function PagBankCardForm({
           className="input mt-1"
           value={installments}
           onChange={(e) => changeInstallments(Number(e.target.value) || 1)}
-          disabled={disabled}
+          disabled={disabled || optionsLoading}
         >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => {
-            const base = Math.max(0, amount);
-            const per = base > 0 ? Math.round((base / n) * 100) / 100 : 0;
-            if (n === 1) {
-              return (
-                <option key={n} value={n}>
-                  {base > 0
-                    ? `1x de ${formatBRL(base)} sem juros`
-                    : "1x sem juros"}
-                </option>
-              );
-            }
-            return (
-              <option key={n} value={n}>
-                {base > 0
-                  ? `${n}x de ${formatBRL(per)} · total loja ${formatBRL(base)} + juros PagBank`
-                  : `${n}x com juros PagBank`}
-              </option>
-            );
-          })}
+          {options.map((opt) => (
+            <option key={opt.installments} value={opt.installments}>
+              {optionLabel(opt)}
+            </option>
+          ))}
         </select>
       </label>
+      {optionsLoading ? (
+        <p className="text-[11px] text-muted">Carregando opções de parcela…</p>
+      ) : null}
+      {optionsHint ? (
+        <p className="text-[11px] text-muted">{optionsHint}</p>
+      ) : null}
 
       {localError ? (
         <p className="text-xs text-[#8a3a3a]">{localError}</p>
       ) : null}
 
       <button
-        type="submit"
+        type="button"
         className="btn btn-primary w-full"
         disabled={disabled || !publicKey}
+        onClick={() => void handlePay()}
       >
         {disabled ? "Processando…" : "Pagar"}
       </button>
       <p className="text-[10px] text-muted leading-relaxed">
-        Somente 1x é sem juros na loja. Em 2x ou mais, a loja cobra o valor
-        acima; o PagBank pode acrescentar juros no cartão (aparecem no extrato
-        da cliente, não na conta da loja). Os dados do cartão são criptografados
-        no navegador.
+        {maxInterestFree <= 1
+          ? "1x sem juros. Em 2x ou mais, os juros são do PagBank (opcional). Os dados do cartão são criptografados no navegador."
+          : `Até ${maxInterestFree}x sem juros; demais parcelas com juros do PagBank. Os dados do cartão são criptografados no navegador.`}
       </p>
-    </form>
+    </div>
   );
 }

@@ -174,7 +174,12 @@ export function ProductEditForm({
       });
       if (!check.ok) {
         setSaveIssues(check.issues);
-        setMsg("Não deu para ativar — complete o checklist abaixo.");
+        const titles = check.issues.map((i) => i.message).join(" · ");
+        setMsg(
+          titles
+            ? `Não deu para ativar — ${titles}`
+            : "Não deu para ativar — complete o checklist abaixo."
+        );
         return;
       }
     }

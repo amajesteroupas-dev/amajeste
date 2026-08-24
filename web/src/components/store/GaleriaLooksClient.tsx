@@ -48,6 +48,7 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [productName, setProductName] = useState("");
+  const [productId, setProductId] = useState("");
   const [caption, setCaption] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
@@ -85,7 +86,7 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
     setMsg("");
     setErr("");
 
-    if (!productName.trim()) {
+    if (!productId) {
       setErr("Selecione a peça Majesté (nome igual ao do site).");
       return;
     }
@@ -108,6 +109,7 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
     setBusy(true);
     const fd = new FormData();
     fd.set("file", file);
+    fd.set("productId", productId);
     fd.set("productName", productName.trim());
     fd.set("caption", caption.trim());
     fd.set("imageConsent", "true");
@@ -238,12 +240,17 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
               <select
                 className="input mt-1.5"
                 required
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
+                value={productId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setProductId(id);
+                  const found = products.find((p) => p.id === id);
+                  setProductName(found?.name || "");
+                }}
               >
                 <option value="">Selecione o produto Majesté</option>
                 {products.map((p) => (
-                  <option key={p.id} value={p.name}>
+                  <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
@@ -410,7 +417,7 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
                       <img
                         src={l.imageUrl}
                         alt={l.caption || "Look"}
-                        className="aspect-[3/4] w-full object-cover bg-[#ece6df]"
+                        className="block w-full h-auto bg-[#ece6df]"
                       />
                       <div className="p-3 space-y-2">
                         <span
@@ -432,6 +439,11 @@ export function GaleriaLooksClient({ products }: { products: ProductOpt[] }) {
                         )}
                         {l.productName ? (
                           <p className="text-xs text-[#8a7468]">{l.productName}</p>
+                        ) : null}
+                        {l.caption ? (
+                          <p className="text-xs text-[#3a322c] leading-relaxed whitespace-pre-wrap">
+                            {l.caption}
+                          </p>
                         ) : null}
                         {code ? (
                           <div className="space-y-1.5">

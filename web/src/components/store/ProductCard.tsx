@@ -100,46 +100,42 @@ export function ProductCard({
   const pool = videoUrl && hasProductVideo(videoUrl) ? [videoUrl] : [];
   const showVideo = pool.length > 0;
   const listPrice = Number(price);
-  const displayPercent = Math.max(
-    sitePromo.active ? sitePromo.percent : 0,
-    sitePromo.pixOfferPercent,
-    sitePromo.card1xOfferPercent
-  );
-  const hasSitePromo = displayPercent > 0;
-  const salePrice = hasSitePromo
+  const siteWideOn = sitePromo.active && sitePromo.percent > 0;
+  const basePixPercent =
+    sitePromo.pixOfferPercent > 0 ? sitePromo.pixOfferPercent : 5;
+  const displayPercent = siteWideOn
+    ? sitePromo.percent
+    : Math.max(sitePromo.card1xOfferPercent, 0);
+  const hasStrikePromo = displayPercent > 0;
+  const salePrice = hasStrikePromo
     ? promoPrice(listPrice, displayPercent)
     : listPrice;
   const strikePrice =
-    hasSitePromo
+    hasStrikePromo
       ? listPrice
       : compareAt && Number(compareAt) > listPrice
         ? Number(compareAt)
         : null;
 
-  const paymentLine =
-    sitePromo.active && sitePromo.percent > 0
-      ? resolveProductCardPromoLine(
-          sitePromo.paymentCopy.productCardLinePromo,
-          {
-            percent: sitePromo.percent,
-            pixPercent: sitePromo.pixPercentIncluded,
-          }
-        )
-      : sitePromo.pixOfferPercent > 0 || sitePromo.card1xOfferPercent > 0
-        ? [
-            sitePromo.pixOfferPercent > 0
-              ? `${sitePromo.pixOfferPercent}% no Pix`
-              : null,
-            sitePromo.card1xOfferPercent > 0
-              ? `${sitePromo.card1xOfferPercent}% no cartão em 1x`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        : fillPaymentCopy(sitePromo.paymentCopy.productCardLine, {
-            percent: 5,
-            pixPercent: 5,
-          });
+  const pixPrice = siteWideOn
+    ? promoPrice(listPrice, sitePromo.percent)
+    : promoPrice(listPrice, basePixPercent);
+  const listLabel = formatBRL(listPrice);
+  const pixLabel = formatBRL(pixPrice);
+
+  const paymentLine = siteWideOn
+    ? resolveProductCardPromoLine(sitePromo.paymentCopy.productCardLinePromo, {
+        percent: sitePromo.percent,
+        pixPercent: sitePromo.pixPercentIncluded,
+        price: pixLabel,
+        listPrice: listLabel,
+      })
+    : fillPaymentCopy(sitePromo.paymentCopy.productCardLine, {
+        percent: basePixPercent,
+        pixPercent: basePixPercent,
+        price: pixLabel,
+        listPrice: listLabel,
+      });
 
   return (
     <article className="product-card group flex h-full flex-col">
@@ -210,7 +206,7 @@ export function ProductCard({
               {formatBRL(strikePrice)}
             </span>
           ) : null}
-          {hasSitePromo ? (
+          {hasStrikePromo ? (
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[#a85f64]">
               −{displayPercent}%
             </span>

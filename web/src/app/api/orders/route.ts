@@ -7,7 +7,11 @@ import {
   createCheckoutPreference,
   createPixPayment,
 } from "@/lib/payments";
-import { createPagSeguroCardOrder, createPagSeguroPixOrder } from "@/lib/payments-pagseguro";
+import {
+  createPagSeguroCardOrder,
+  createPagSeguroPixOrder,
+  humanizePagBankError,
+} from "@/lib/payments-pagseguro";
 import { createInfinityPayCheckout } from "@/lib/payments-infinitypay";
 import { getEnabledCheckoutMethods } from "@/lib/payment-settings";
 import {
@@ -17,12 +21,14 @@ import {
 } from "@/lib/finance-settings";
 import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
 import {
+  STOCK_RESERVE_SECONDS,
   STOCK_RESERVE_MINUTES,
-  commitOrderStockHold,
+  availableStock,
   expireStaleStockReservations,
+  finalizeOrderStockOnPaid,
   reservationDeadline,
 } from "@/lib/order-stock-reserve";
-import { InventoryType, PaymentStatus } from "@prisma/client";
+import { PaymentStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { digitsOnly, isValidCpf } from "@/lib/cpf";
 import {
@@ -73,6 +79,11 @@ export async function POST(req: NextRequest) {
       encryptedCard,
       holderName,
       holderTaxId,
+      interestTotal,
+      interestTotalCents,
+      interestInstallments,
+      cardBin,
+      maxInterestFree,
       attribution: attributionRaw,
       cartSessionId,
     } = body;
@@ -114,38 +125,54 @@ export async function POST(req: NextRequest) {
     let subtotal = 0;
     const finCosts = (await getFinanceOpsSettings()).costs;
     const packUnit = packagingUnitCost(finCosts);
-    const orderItemsData = items.map(
-      (item: { variantId: string; quantity: number }) => {
-        const variant = variants.find((v) => v.id === item.variantId)!;
-        if (variant.stock < item.quantity) {
-          throw new Error(`Estoque insuficiente: ${variant.product.name}`);
-        }
-        const basePrice = Number(variant.price ?? variant.product.price);
-        const unitPrice = applyPriceAdjust(
-          basePrice,
-          variant.product.category?.priceAdjustPercent
+    const orderItemsData: {
+      variantId: string;
+      productName: string;
+      size: string;
+      color: string;
+      quantity: number;
+      unitPrice: number;
+      unitCost: number;
+      unitPackaging: number;
+      unitTax: number;
+      total: number;
+    }[] = [];
+    for (const item of items as { variantId: string; quantity: number }[]) {
+      const variant = variants.find((v) => v.id === item.variantId)!;
+      const free = await availableStock(variant.id, variant.stock);
+      if (free < item.quantity) {
+        return NextResponse.json(
+          {
+            error: `Estoque insuficiente: ${variant.product.name}`,
+          },
+          { status: 400 }
         );
-        const unitCost =
-          Number(variant.avgCost) > 0
-            ? Number(variant.avgCost)
-            : Number(variant.product.costPrice) || 0;
-        const unitTax = taxOnSalePrice(unitPrice, finCosts.taxPercent);
-        const lineTotal = unitPrice * item.quantity;
-        subtotal += lineTotal;
-        return {
-          variantId: variant.id,
-          productName: variant.product.name,
-          size: variant.size,
-          color: variant.color,
-          quantity: item.quantity,
-          unitPrice,
-          unitCost,
-          unitPackaging: packUnit,
-          unitTax,
-          total: lineTotal,
-        };
       }
-    );
+      const basePrice = Number(variant.price ?? variant.product.price);
+      const unitPrice = applyPriceAdjust(
+        basePrice,
+        variant.product.category?.priceAdjustPercent
+      );
+      const unitCost =
+        Number(variant.avgCost) > 0
+          ? Number(variant.avgCost)
+          : Number(variant.product.costPrice) || 0;
+      const unitTax = taxOnSalePrice(unitPrice, finCosts.taxPercent);
+      const lineTotal = unitPrice * item.quantity;
+      subtotal += lineTotal;
+      orderItemsData.push({
+        variantId: variant.id,
+        productName: variant.product.name,
+        size: variant.size,
+        color: variant.color,
+        quantity: item.quantity,
+        unitPrice,
+        unitCost,
+        unitPackaging: packUnit,
+        unitTax,
+        total: lineTotal,
+      });
+    }
 
     let safeShipping = Number(shippingCost) || 0;
     if (!Number.isFinite(safeShipping) || safeShipping < 0 || safeShipping > 800) {
@@ -184,23 +211,42 @@ export async function POST(req: NextRequest) {
       session?.user?.email?.toLowerCase() ||
       "";
 
-    let customer = await prisma.customer.findUnique({ where: { email } });
+    // 1) Conta logada (userId é único)  2) e-mail do formulário
+    let customer = sessionUserId
+      ? await prisma.customer.findUnique({ where: { userId: sessionUserId } })
+      : null;
     if (!customer) {
-      customer = await prisma.customer.create({
-        data: {
-          name: guestName,
-          email,
-          phone: guestPhone || null,
-          cpf,
-          userId: sessionUserId || undefined,
-        },
-      });
+      customer = await prisma.customer.findUnique({ where: { email } });
+    }
+
+    if (!customer) {
+      try {
+        customer = await prisma.customer.create({
+          data: {
+            name: guestName,
+            email,
+            phone: guestPhone || null,
+            cpf,
+            userId: sessionUserId || undefined,
+          },
+        });
+      } catch (createErr) {
+        // Corrida / userId já ligado: reutiliza o cadastro existente
+        const byUser = sessionUserId
+          ? await prisma.customer.findUnique({
+              where: { userId: sessionUserId },
+            })
+          : null;
+        const byEmail = await prisma.customer.findUnique({ where: { email } });
+        customer = byUser || byEmail;
+        if (!customer) throw createErr;
+      }
     } else if (
       sessionUserId &&
       (customer.userId === sessionUserId ||
         (!customer.userId && sessionEmail === email))
     ) {
-      // Só atualiza PII se a sessão logada for dona do e-mail
+      // Só atualiza PII se a sessão logada for dona do cadastro
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
@@ -338,26 +384,12 @@ export async function POST(req: NextRequest) {
             ? String(shippingServiceId).slice(0, 64)
             : null,
           reservedUntil: reservationDeadline(),
-          stockHeld: true,
+          // Estoque físico só baixa quando o pagamento for confirmado
+          stockHeld: false,
           ...attrFields,
           items: { create: orderItemsData },
         },
       });
-
-      for (const item of orderItemsData) {
-        await tx.productVariant.update({
-          where: { id: item.variantId },
-          data: { stock: { decrement: item.quantity } },
-        });
-        await tx.inventoryMovement.create({
-          data: {
-            variantId: item.variantId,
-            type: InventoryType.SALE,
-            quantity: -item.quantity,
-            note: `Reserva Pedido ${orderNumber} (${STOCK_RESERVE_MINUTES} min)`,
-          },
-        });
-      }
 
       if (couponId) {
         await tx.discountCoupon.update({
@@ -598,6 +630,14 @@ export async function POST(req: NextRequest) {
             amount: total,
             encryptedCard: String(encryptedCard),
             installments: Number(installments) || 1,
+            interestTotal: Number(interestTotal) || 0,
+            interestTotalCents:
+              interestTotalCents != null
+                ? Number(interestTotalCents)
+                : undefined,
+            interestInstallments: Number(interestInstallments) || undefined,
+            cardBin: cardBin ? String(cardBin) : undefined,
+            maxInterestFree: Number(maxInterestFree) || 1,
             items: linePs,
             shipping: shippingAddr,
             shippingCost: safeShipping,
@@ -684,7 +724,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (paymentStatus === PaymentStatus.APPROVED) {
-      await commitOrderStockHold(order.id);
+      await finalizeOrderStockOnPaid(order.id);
       void onOrderPaidSideEffects(order.id);
     }
 
@@ -692,9 +732,17 @@ export async function POST(req: NextRequest) {
       void markCartRecovered(String(cartSessionId));
     }
 
+    void import("@/lib/order-notify")
+      .then(({ notifyOrderPlaced }) => notifyOrderPlaced(order.id))
+      .catch((e) => console.error("[notifyOrderPlaced]", e));
+
     return NextResponse.json({
       orderId: order.id,
       orderNumber,
+      reserveSeconds:
+        paymentStatus === PaymentStatus.APPROVED
+          ? null
+          : STOCK_RESERVE_SECONDS,
       reserveMinutes:
         paymentStatus === PaymentStatus.APPROVED
           ? null
@@ -718,8 +766,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error(err);
+    const raw = err instanceof Error ? err.message : "Erro ao criar pedido";
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Erro ao criar pedido" },
+      { error: humanizePagBankError(raw) },
       { status: 500 }
     );
   }

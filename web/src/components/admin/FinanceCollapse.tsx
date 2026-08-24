@@ -67,11 +67,18 @@ export function FinanceCollapse({
           <div className="flex items-center gap-1.5 pr-2 shrink-0">{actions}</div>
         ) : null}
       </div>
-      {open ? (
-        <div className="border-t border-black/8 px-3 pb-3 pt-3 space-y-3">
-          {children}
-        </div>
-      ) : null}
+      {/* Mantém os campos no DOM mesmo fechado — senão o FormData perde
+          frete/pagamento ao salvar e o checklist bloqueia ativação. */}
+      <div
+        className={
+          open
+            ? "border-t border-black/8 px-3 pb-3 pt-3 space-y-3"
+            : "hidden"
+        }
+        aria-hidden={!open}
+      >
+        {children}
+      </div>
     </section>
   );
 }

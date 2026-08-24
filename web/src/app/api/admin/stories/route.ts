@@ -8,7 +8,9 @@ import {
   parseStoryQuestions,
   serializeStoryQuestions,
   getGlobalStoriesSurvey,
+  getStoriesSurveyEnabled,
   setGlobalStoriesSurvey,
+  setStoriesSurveyEnabled,
   type StoryQuestion,
 } from "@/lib/stories";
 
@@ -55,20 +57,22 @@ export async function GET() {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const [stories, maxActive, videoBank, surveyQuestions] = await Promise.all([
-    prisma.storeStory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      include: { _count: { select: { answers: true } } },
-    }),
-    getStoriesMaxActive(),
-    prisma.videoAsset.findMany({
-      where: { active: true },
-      orderBy: { createdAt: "desc" },
-      take: 80,
-      select: { id: true, url: true, title: true, thumbUrl: true },
-    }),
-    getGlobalStoriesSurvey(),
-  ]);
+  const [stories, maxActive, videoBank, surveyQuestions, surveyEnabled] =
+    await Promise.all([
+      prisma.storeStory.findMany({
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        include: { _count: { select: { answers: true } } },
+      }),
+      getStoriesMaxActive(),
+      prisma.videoAsset.findMany({
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+        take: 80,
+        select: { id: true, url: true, title: true, thumbUrl: true },
+      }),
+      getGlobalStoriesSurvey(),
+      getStoriesSurveyEnabled(),
+    ]);
 
   const activeCount = stories.filter((s) => s.active).length;
 
@@ -76,6 +80,7 @@ export async function GET() {
     maxActive,
     activeCount,
     surveyQuestions,
+    surveyEnabled,
     stories: stories.map((s) => ({
       id: s.id,
       videoUrl: s.videoUrl,
@@ -104,6 +109,11 @@ export async function POST(req: NextRequest) {
     if (body.action === "setMax") {
       const max = await setStoriesMaxActive(Number(body.max) || 5);
       return NextResponse.json({ maxActive: max });
+    }
+
+    if (body.action === "setSurveyEnabled") {
+      const enabled = await setStoriesSurveyEnabled(Boolean(body.enabled));
+      return NextResponse.json({ surveyEnabled: enabled });
     }
 
     if (body.action === "applyQuestions") {

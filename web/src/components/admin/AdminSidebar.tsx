@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Mail,
   Megaphone,
+  MessageCircle,
   MessageSquareHeart,
   Package,
   Scissors,
@@ -34,6 +35,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { AdminPwaInstallButton } from "@/components/admin/AdminPwaInstall";
+import { MajesteCrown } from "@/components/store/MajesteCrown";
 
 type IconType = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
 
@@ -73,6 +75,11 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/stories", label: "Stories do dia", icon: Clapperboard },
       { href: "/admin/instagram", label: "Instagram", icon: Camera },
       { href: "/admin/email-marketing", label: "E-mail marketing", icon: Mail },
+      {
+        href: "/admin/notificacoes",
+        label: "Notificações pedido",
+        icon: MessageCircle,
+      },
       { href: "/admin/trafego", label: "Vender mais", icon: TrendingUp },
     ],
   },
@@ -200,7 +207,7 @@ export function AdminSidebar({ userEmail, signOutAction }: Props) {
     <aside className="admin-sidebar">
       <Link href="/admin" className="admin-sidebar-brand">
         <span className="admin-sidebar-crown" aria-hidden>
-          ♛
+          <MajesteCrown size={18} gradId="admin-side" />
         </span>
         <span
           style={{ fontFamily: "var(--font-display)" }}

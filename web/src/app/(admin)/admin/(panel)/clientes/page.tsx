@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { formatCpf } from "@/lib/cpf";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function CustomersPage() {
           <thead>
             <tr>
               <th>Nome</th>
+              <th>CPF</th>
               <th>E-mail</th>
               <th>Telefone</th>
               <th>Pedidos</th>
@@ -35,6 +37,9 @@ export default async function CustomersPage() {
                   <Link href={`/admin/clientes/${c.id}`} className="text-rose-dark">
                     {c.name}
                   </Link>
+                </td>
+                <td className="font-mono text-xs">
+                  {c.cpf ? formatCpf(c.cpf) : "—"}
                 </td>
                 <td>{c.email}</td>
                 <td>{c.phone || "—"}</td>

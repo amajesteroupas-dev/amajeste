@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CashEntryType, OrderStatus, PaymentStatus } from "@prisma/client";
 import { onOrderPaidSideEffects } from "@/lib/order-paid-effects";
 import {
-  commitOrderStockHold,
+  finalizeOrderStockOnPaid,
   releaseOrderStockHold,
   reservationDeadline,
 } from "@/lib/order-stock-reserve";
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
           ...(paymentStatus === PaymentStatus.APPROVED
             ? { reservedUntil: null }
             : {}),
-          ...(paymentFailedKeepOrder && payment.order.stockHeld
+          ...(paymentFailedKeepOrder
             ? { reservedUntil: reservationDeadline() }
             : {}),
         },
@@ -147,6 +147,19 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Falha de pagamento: devolve baixa física legada e mantém prazo soft
+      if (paymentFailedKeepOrder && payment.order.stockHeld) {
+        await releaseOrderStockHold(
+          payment.orderId,
+          "Pagamento recusado — estoque liberado",
+          tx
+        );
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: { reservedUntil: reservationDeadline(), stockHeld: false },
+        });
+      }
+
       if (orderStatus === OrderStatus.REFUNDED && payment.order.stockHeld) {
         await releaseOrderStockHold(
           payment.orderId,
@@ -157,7 +170,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (paymentStatus === PaymentStatus.APPROVED && !wasApproved) {
-      await commitOrderStockHold(payment.orderId);
+      await finalizeOrderStockOnPaid(payment.orderId);
       void onOrderPaidSideEffects(payment.orderId);
     }
 

@@ -69,7 +69,10 @@ export const STROKE_COLORS = [
   "#1a2744",
 ];
 
-export type BannerTextStyle = Partial<Record<TextLayerKey, TextLayerStyle>>;
+export type BannerTextStyle = Partial<Record<TextLayerKey, TextLayerStyle>> & {
+  /** Overlay estilo Canva em cima do vídeo (texto, brilhos, linha). */
+  __artLayers?: unknown;
+};
 
 export type TextSelection = { start: number; end: number };
 
@@ -401,6 +404,25 @@ export function getLayerStyle(
   key: TextLayerKey
 ): TextLayerStyle {
   return { ...DEFAULTS[key], ...(textStyle?.[key] || {}) };
+}
+
+/** Texto sobre fundo creme: tinta escura, sem contorno branco de overlay. */
+export function layerInkOnPanel(
+  layer: TextLayerStyle,
+  ink: string
+): TextLayerStyle {
+  return {
+    ...layer,
+    color: ink,
+    strokeWidth: 0,
+    strokeColor: undefined,
+    runs: layer.runs?.map((r) => ({
+      ...r,
+      color: ink,
+      strokeWidth: 0,
+      strokeColor: undefined,
+    })),
+  };
 }
 
 export function fontFamilyOf(fontId?: string) {

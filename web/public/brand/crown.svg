@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 72" fill="none" role="img" aria-label="Coroa Majest�">
+  <defs>
+    <linearGradient id="cg" x1="8" y1="4" x2="92" y2="68" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f7ecc0"/>
+      <stop offset="28%" stop-color="#e8d090"/>
+      <stop offset="55%" stop-color="#d4af5a"/>
+      <stop offset="78%" stop-color="#b8923f"/>
+      <stop offset="100%" stop-color="#8a6a28"/>
+    </linearGradient>
+    <linearGradient id="cgs" x1="50" y1="0" x2="50" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff4cc"/>
+      <stop offset="100%" stop-color="#c9a24a"/>
+    </linearGradient>
+  </defs>
+  <path d="M14 58 H86" stroke="url(#cg)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M22 63 H78" stroke="url(#cg)" stroke-width="1.35" stroke-linecap="round" opacity="0.85"/>
+  <path d="M22 56 L30 18 L42 40" stroke="url(#cg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M78 56 L70 18 L58 40" stroke="url(#cg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 10 L62 34 L50 54 L38 34 Z" stroke="url(#cgs)" stroke-width="2" stroke-linejoin="round" fill="none"/>
+  <path d="M30 18 L50 54 L70 18" stroke="url(#cg)" stroke-width="1.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>
+  <circle cx="30" cy="16.5" r="3.4" fill="url(#cgs)"/>
+  <circle cx="50" cy="8.5" r="3.8" fill="url(#cgs)"/>
+  <circle cx="70" cy="16.5" r="3.4" fill="url(#cgs)"/>
+</svg>

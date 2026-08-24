@@ -12,6 +12,8 @@ export type CardVariant = {
   colorHex?: string | null;
   stock?: number;
   active?: boolean;
+  /** Preço da variante (se null/omitido, usa o preço do produto). */
+  price?: { toString(): string } | number | string | null;
 };
 
 export type CardImage = {
@@ -109,9 +111,31 @@ export function buildProductCardProps(p: {
 
   const adjust =
     p.priceAdjustPercent ?? p.category?.priceAdjustPercent ?? 0;
-  const rawPrice = Number(
+  const productPrice = Number(
     typeof p.price === "object" ? p.price.toString() : p.price
   );
+
+  // Mesma regra do PDP/checkout: variant.price ?? product.price.
+  // Na cor em foco (ou em todas as vendáveis), usa o menor preço real —
+  // evita vitrine com product.price e página com variante antiga.
+  const pricePool =
+    focus && sellable.some((v) => normalizeColor(v.color) === focus)
+      ? sellable.filter((v) => normalizeColor(v.color) === focus)
+      : sellable;
+  const resolvedPrices = (pricePool.length ? pricePool : sellable)
+    .map((v) => {
+      if (v.price == null || v.price === "") return productPrice;
+      const n = Number(
+        typeof v.price === "object" ? v.price.toString() : v.price
+      );
+      return Number.isFinite(n) && n > 0 ? n : productPrice;
+    })
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const rawPrice =
+    resolvedPrices.length > 0
+      ? Math.min(...resolvedPrices)
+      : productPrice;
+
   const adjustedPrice = applyPriceAdjust(rawPrice, adjust);
   const rawCompare =
     p.compareAt == null

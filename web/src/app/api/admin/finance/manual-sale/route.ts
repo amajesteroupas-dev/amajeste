@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
         guestName: guestName || `Cliente ${channel}`,
         guestPhone,
         status: "PAID",
+        stockHeld: true,
         subtotal,
         shippingCost: 0,
         total: subtotal,

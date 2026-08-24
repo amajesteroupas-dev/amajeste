@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { SessionProvider, signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { MajesteCrown } from "@/components/store/MajesteCrown";
 
 function AdminLoginFormInner() {
   const params = useSearchParams();
@@ -36,10 +37,11 @@ function AdminLoginFormInner() {
         className="w-full max-w-md border border-black/10 bg-white p-8 space-y-4 shadow-sm"
       >
         <h1
-          className="text-3xl text-center mb-2 text-[#121212]"
+          className="text-3xl text-center mb-2 text-[#121212] flex flex-col items-center gap-2"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          ♛ Majesté
+          <MajesteCrown size={28} gradId="admin-login" />
+          Majesté
         </h1>
         <p className="text-center text-sm text-[#6b6560] mb-4">
           Acesso administrativo

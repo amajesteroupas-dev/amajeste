@@ -22,8 +22,10 @@ export type SitePromotion = {
   /** all = qualquer pagamento | pix | card */
   scope: PromoPaymentScope;
   /**
-   * Limite de parcelas do cartão para promoções `all` ou `card`.
-   * Se 1, vale apenas à vista (1x). null = qualquer parcelamento.
+   * Parcelas sem juros no cartão (PagBank / texto da loja).
+   * Não remove o desconto: em `all` e `card` o % vale em qualquer parcela;
+   * acima deste limite o cliente assume o juros do gateway.
+   * 1 = à vista sem juros. null = sem limite de sem juros (raro).
    */
   cardInstallmentsMax: number | null;
   createdAt: string;
@@ -119,29 +121,11 @@ export function promoMatchesPayment(
   promo: SitePromotion,
   ctx: CheckoutPaymentContext
 ): boolean {
-  if (promo.scope === "all") {
-    if (
-      ctx.isCard &&
-      promo.cardInstallmentsMax != null &&
-      promo.cardInstallmentsMax > 0 &&
-      ctx.installments > promo.cardInstallmentsMax
-    ) {
-      return false;
-    }
-    return true;
-  }
+  // Desconto não depende da quantidade de parcelas — só do meio de pagamento.
+  // cardInstallmentsMax define apenas até quantas parcelas são sem juros.
+  if (promo.scope === "all") return true;
   if (promo.scope === "pix") return ctx.isPix;
-  if (promo.scope === "card") {
-    if (!ctx.isCard) return false;
-    if (
-      promo.cardInstallmentsMax != null &&
-      promo.cardInstallmentsMax > 0 &&
-      ctx.installments > promo.cardInstallmentsMax
-    ) {
-      return false;
-    }
-    return true;
-  }
+  if (promo.scope === "card") return ctx.isCard;
   return false;
 }
 
