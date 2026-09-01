@@ -478,14 +478,33 @@ export async function createPagSeguroCardOrder(params: {
     Math.max(1, Number(params.interestInstallments) || installments)
   );
 
-  // Recalcula na API de taxas (fonte da verdade) para evitar invalid_parameter.
-  if (interestCents > 0 && installments > 1) {
+  const maxInterestFree = Math.max(1, Number(params.maxInterestFree) || 1);
+
+  // Sempre recalcula na API de taxas quando parcelas > sem juros da loja.
+  if (installments > maxInterestFree) {
     const looked = await lookupBuyerInterestFees({
       token,
       sandbox: s.pagseguro.sandbox,
       amountCents,
       installments,
-      maxInterestFree: Number(params.maxInterestFree) || 1,
+      maxInterestFree,
+      bin: params.cardBin,
+    });
+    if (looked) {
+      interestCents = looked.total;
+      feeInterestInstallments = Math.min(installments, looked.installments);
+    } else if (interestCents <= 0) {
+      throw new Error(
+        "Não foi possível calcular as parcelas com juros. Tente novamente ou pague em 1x / Pix."
+      );
+    }
+  } else if (interestCents > 0 && installments > 1) {
+    const looked = await lookupBuyerInterestFees({
+      token,
+      sandbox: s.pagseguro.sandbox,
+      amountCents,
+      installments,
+      maxInterestFree,
       bin: params.cardBin,
     });
     if (looked) {

@@ -204,7 +204,26 @@ export async function GET(req: NextRequest) {
     const options = [...byN.values()].sort(
       (a, b) => a.installments - b.installments
     );
-    return NextResponse.json({ options });
+
+    if (options.length > 1) {
+      return NextResponse.json({ options });
+    }
+
+    // Fallback: exibe 1x–12x mesmo se a API PagBank não retornar planos com juros.
+    const estimated: Plan[] = [];
+    for (let n = 1; n <= maxInstallments; n++) {
+      const interestFree = n <= Math.max(1, storeFree);
+      estimated.push({
+        installments: n,
+        installmentValue: Math.round((originalReais / n) * 100) / 100,
+        totalAmount: originalReais,
+        interestFree,
+        interestTotal: 0,
+        interestTotalCents: 0,
+        interestInstallments: interestFree ? 0 : Math.max(1, n - apiNoInterest),
+      });
+    }
+    return NextResponse.json({ options: estimated, warning: "estimated" });
   } catch (e) {
     console.error("[pagseguro installments]", e);
     return NextResponse.json({ options: [], error: "exception" });

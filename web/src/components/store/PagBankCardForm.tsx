@@ -115,16 +115,19 @@ function buildLocalInstallments(
 ): InstallmentOption[] {
   const total = Math.max(0, Number(amount) || 0);
   const freeMax = Math.max(1, Math.min(12, maxInterestFree || 1));
-  return Array.from({ length: freeMax }, (_, i) => {
+  return Array.from({ length: 12 }, (_, i) => {
     const n = i + 1;
-    const installmentValue = Math.round((total / n) * 100) / 100;
+    const installmentValue =
+      total > 0 ? Math.round((total / n) * 100) / 100 : 0;
+    const interestFree = n <= freeMax;
     return {
       installments: n,
       installmentValue,
       totalAmount: total,
-      interestFree: true,
+      interestFree,
       interestTotal: 0,
-      interestInstallments: 0,
+      interestTotalCents: 0,
+      interestInstallments: interestFree ? 0 : Math.max(1, n - freeMax),
     };
   });
 }
@@ -136,7 +139,10 @@ function optionLabel(opt: InstallmentOption) {
       ? `1x de ${parcela} sem juros`
       : `${opt.installments}x de ${parcela} sem juros`;
   }
-  return `${opt.installments}x de ${parcela} com juros · total ${formatBRL(opt.totalAmount)}`;
+  if (opt.interestTotal && opt.interestTotal > 0) {
+    return `${opt.installments}x de ${parcela} com juros · total ${formatBRL(opt.totalAmount)}`;
+  }
+  return `${opt.installments}x de ${parcela} (+ juros PagBank)`;
 }
 
 export function PagBankCardForm({
@@ -237,30 +243,30 @@ export function PagBankCardForm({
             const withInterest = parsed.filter(
               (o) =>
                 !o.interestFree &&
-                Number(o.interestTotal) > 0 &&
                 o.installments > maxInterestFree
             );
             const merged = [...free, ...withInterest].sort(
               (a, b) => a.installments - b.installments
             );
-            setOptions(merged.length ? merged : fallback);
-            setOptionsHint(
-              withInterest.length
-                ? ""
-                : "Parcelas com juros indisponíveis no momento — só à vista sem juros."
-            );
+            if (merged.length > 0) {
+              setOptions(merged);
+              setOptionsHint(
+                withInterest.length
+                  ? ""
+                  : "Juros exatos do PagBank aparecem ao digitar o cartão."
+              );
+            } else {
+              setOptions(fallback);
+              setOptionsHint("");
+            }
           } else {
             setOptions(fallback);
-            setOptionsHint(
-              "Parcelas com juros indisponíveis no momento — só à vista sem juros."
-            );
+            setOptionsHint("");
           }
         } catch {
           if (!cancelled) {
             setOptions(fallback);
-            setOptionsHint(
-              "Parcelas com juros indisponíveis no momento — só à vista sem juros."
-            );
+            setOptionsHint("");
           }
         } finally {
           if (!cancelled) setOptionsLoading(false);
