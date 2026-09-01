@@ -26,6 +26,28 @@ function fromCents(cents: number) {
   return Math.round(Number(cents) || 0) / 100;
 }
 
+function buildEstimatedPlans(
+  originalReais: number,
+  maxInstallments: number,
+  storeFree: number,
+  apiNoInterest: number
+): Plan[] {
+  const plans: Plan[] = [];
+  for (let n = 1; n <= maxInstallments; n++) {
+    const interestFree = n <= Math.max(1, storeFree);
+    plans.push({
+      installments: n,
+      installmentValue: Math.round((originalReais / n) * 100) / 100,
+      totalAmount: originalReais,
+      interestFree,
+      interestTotal: 0,
+      interestTotalCents: 0,
+      interestInstallments: interestFree ? 0 : Math.max(1, n - apiNoInterest),
+    });
+  }
+  return plans;
+}
+
 /**
  * Opções de parcelamento PagBank:
  * - até maxInterestFree → sem juros (loja assume)
@@ -57,7 +79,16 @@ export async function GET(req: NextRequest) {
   const s = await getPaymentSettings();
   const token = normalizePagSeguroToken(s.pagseguro.token);
   if (!token) {
-    return NextResponse.json({ options: [], reason: "no_token" });
+    return NextResponse.json({
+      options: buildEstimatedPlans(
+        originalReais,
+        maxInstallments,
+        storeFree,
+        apiNoInterest
+      ),
+      warning: "estimated",
+      reason: "no_token",
+    });
   }
 
   try {
@@ -109,7 +140,13 @@ export async function GET(req: NextRequest) {
         JSON.stringify(data).slice(0, 800)
       );
       return NextResponse.json({
-        options: [],
+        options: buildEstimatedPlans(
+          originalReais,
+          maxInstallments,
+          storeFree,
+          apiNoInterest
+        ),
+        warning: "estimated",
         status: res.status,
         error: data.error_messages?.[0]?.description || "fees_failed",
       });
@@ -210,22 +247,26 @@ export async function GET(req: NextRequest) {
     }
 
     // Fallback: exibe 1x–12x mesmo se a API PagBank não retornar planos com juros.
-    const estimated: Plan[] = [];
-    for (let n = 1; n <= maxInstallments; n++) {
-      const interestFree = n <= Math.max(1, storeFree);
-      estimated.push({
-        installments: n,
-        installmentValue: Math.round((originalReais / n) * 100) / 100,
-        totalAmount: originalReais,
-        interestFree,
-        interestTotal: 0,
-        interestTotalCents: 0,
-        interestInstallments: interestFree ? 0 : Math.max(1, n - apiNoInterest),
-      });
-    }
-    return NextResponse.json({ options: estimated, warning: "estimated" });
+    return NextResponse.json({
+      options: buildEstimatedPlans(
+        originalReais,
+        maxInstallments,
+        storeFree,
+        apiNoInterest
+      ),
+      warning: "estimated",
+    });
   } catch (e) {
     console.error("[pagseguro installments]", e);
-    return NextResponse.json({ options: [], error: "exception" });
+    return NextResponse.json({
+      options: buildEstimatedPlans(
+        originalReais,
+        maxInstallments,
+        storeFree,
+        apiNoInterest
+      ),
+      warning: "estimated",
+      error: "exception",
+    });
   }
 }

@@ -132,6 +132,24 @@ function buildLocalInstallments(
   });
 }
 
+function mergeInstallmentOptions(
+  api: InstallmentOption[],
+  fallback: InstallmentOption[]
+): InstallmentOption[] {
+  const byN = new Map<number, InstallmentOption>();
+  for (const opt of fallback) byN.set(opt.installments, opt);
+  for (const opt of api) {
+    const prev = byN.get(opt.installments);
+    const apiHasFees =
+      !opt.interestFree &&
+      (Number(opt.interestTotalCents) > 0 || Number(opt.interestTotal) > 0);
+    if (!prev || apiHasFees || (opt.interestFree && !prev.interestFree)) {
+      byN.set(opt.installments, opt);
+    }
+  }
+  return [...byN.values()].sort((a, b) => a.installments - b.installments);
+}
+
 function optionLabel(opt: InstallmentOption) {
   const parcela = formatBRL(opt.installmentValue);
   if (opt.interestFree) {
@@ -241,24 +259,20 @@ export function PagBankCardForm({
           if (parsed.length > 0) {
             const free = parsed.filter((o) => o.interestFree);
             const withInterest = parsed.filter(
-              (o) =>
-                !o.interestFree &&
-                o.installments > maxInterestFree
+              (o) => !o.interestFree && o.installments > maxInterestFree
             );
-            const merged = [...free, ...withInterest].sort(
-              (a, b) => a.installments - b.installments
+            const merged = mergeInstallmentOptions(
+              [...free, ...withInterest],
+              fallback
             );
-            if (merged.length > 0) {
-              setOptions(merged);
-              setOptionsHint(
-                withInterest.length
-                  ? ""
-                  : "Juros exatos do PagBank aparecem ao digitar o cartão."
-              );
-            } else {
-              setOptions(fallback);
-              setOptionsHint("");
-            }
+            setOptions(merged);
+            setOptionsHint(
+              withInterest.length
+                ? ""
+                : res.ok
+                  ? "Juros exatos do PagBank aparecem ao digitar o cartão."
+                  : ""
+            );
           } else {
             setOptions(fallback);
             setOptionsHint("");
