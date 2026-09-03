@@ -64,6 +64,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           create: {
             code,
             percent: rewardPercent,
+            kind: "LOOK",
             customerId: look.customerId,
             lookPostId: id,
             used: false,
@@ -71,6 +72,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
           update: {
             code,
             percent: rewardPercent,
+            kind: "LOOK",
             customerId: look.customerId,
             used: false,
             usedAt: null,

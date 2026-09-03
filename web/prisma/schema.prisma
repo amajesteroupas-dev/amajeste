@@ -417,23 +417,34 @@ model LookPost {
   @@index([status])
 }
 
-/// Cupom de desconto (ex.: gerado ao aprovar look)
+/// Cupom de desconto (look Influence ou influencer Instagram)
 model DiscountCoupon {
   id         String    @id @default(cuid())
   code       String    @unique
   percent    Float     @default(10)
+  /// LOOK = cupom único da cliente do look; INFLUENCER = código público multi-uso
+  kind       String    @default("LOOK")
+  /// Nome/@ da influencer (só INFLUENCER)
+  label      String?
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lookPostId String?   @unique
   lookPost   LookPost? @relation(fields: [lookPostId], references: [id], onDelete: SetNull)
+  /// LOOK: true após 1 uso. INFLUENCER: true só se atingir maxUses ou for desativado.
   used       Boolean   @default(false)
   usedAt     DateTime?
   orderId    String?
+  /// null = usos ilimitados (cupons influencer)
+  maxUses    Int?
+  usageCount Int       @default(0)
+  active     Boolean   @default(true)
   expiresAt  DateTime?
   createdAt  DateTime  @default(now())
 
   @@index([customerId])
   @@index([used])
+  @@index([kind])
+  @@index([active])
 }
 
 model CustomerNote {

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer";
-import { lookRewardPercent } from "@/lib/look-reward";
+import {
+  isInfluencerCoupon,
+  lookRewardPercent,
+  resolveCouponPercent,
+} from "@/lib/look-reward";
 
-/** Valida cupom de look / embaixadora */
+/** Valida cupom de look / influencer Instagram */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const code = String(body.code || "")
@@ -33,17 +37,35 @@ export async function POST(req: NextRequest) {
         code,
         percent: lookRewardPercent(look.rewardPercent),
         lookPostId: look.id,
+        kind: "LOOK",
       });
     }
     return NextResponse.json({ error: "Cupom inválido" }, { status: 404 });
   }
 
-  if (coupon.used) {
-    return NextResponse.json({ error: "Este cupom já foi usado" }, { status: 400 });
+  if (!coupon.active) {
+    return NextResponse.json({ error: "Cupom desativado" }, { status: 400 });
   }
   if (coupon.expiresAt && coupon.expiresAt < new Date()) {
     return NextResponse.json({ error: "Cupom expirado" }, { status: 400 });
   }
+
+  const influencer = isInfluencerCoupon(coupon);
+
+  if (influencer) {
+    if (
+      coupon.maxUses != null &&
+      coupon.usageCount >= coupon.maxUses
+    ) {
+      return NextResponse.json(
+        { error: "Este cupom atingiu o limite de usos" },
+        { status: 400 }
+      );
+    }
+  } else if (coupon.used) {
+    return NextResponse.json({ error: "Este cupom já foi usado" }, { status: 400 });
+  }
+
   if (coupon.customerId && customer && coupon.customerId !== customer.id) {
     return NextResponse.json(
       { error: "Este cupom é exclusivo de outra cliente" },
@@ -57,7 +79,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     code: coupon.code,
-    percent: lookRewardPercent(coupon.percent),
+    percent: resolveCouponPercent(coupon),
     lookPostId: coupon.lookPostId,
+    kind: influencer ? "INFLUENCER" : "LOOK",
+    label: coupon.label || undefined,
   });
 }

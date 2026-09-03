@@ -2,7 +2,9 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { LookStatusForm } from "@/components/admin/LookStatusForm";
 import { LookPhotoViewButton } from "@/components/admin/LookPhotoViewButton";
+import { InfluencerCouponAdmin } from "@/components/admin/InfluencerCouponAdmin";
 import { formatConsentDate } from "@/lib/look-image-consent";
+import { COUPON_KIND_INFLUENCER } from "@/lib/look-reward";
 
 export const dynamic = "force-dynamic";
 
@@ -24,27 +26,34 @@ export default async function AdminLooksPage({
       ? undefined
       : (filter as "PENDING" | "APPROVED" | "REJECTED");
 
-  const [looks, pendingCount, approvedCount, coupons] = await Promise.all([
-    prisma.lookPost.findMany({
-      where: statusFilter ? { status: statusFilter } : undefined,
-      orderBy: { createdAt: "desc" },
-      take: 80,
-      include: {
-        customer: { select: { name: true, email: true } },
-        coupon: true,
-      },
-    }),
-    prisma.lookPost.count({ where: { status: "PENDING" } }),
-    prisma.lookPost.count({ where: { status: "APPROVED" } }),
-    prisma.discountCoupon.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 40,
-      include: {
-        customer: { select: { name: true, email: true } },
-        lookPost: { select: { id: true, imageUrl: true } },
-      },
-    }),
-  ]);
+  const [looks, pendingCount, approvedCount, coupons, influencerCoupons] =
+    await Promise.all([
+      prisma.lookPost.findMany({
+        where: statusFilter ? { status: statusFilter } : undefined,
+        orderBy: { createdAt: "desc" },
+        take: 80,
+        include: {
+          customer: { select: { name: true, email: true } },
+          coupon: true,
+        },
+      }),
+      prisma.lookPost.count({ where: { status: "PENDING" } }),
+      prisma.lookPost.count({ where: { status: "APPROVED" } }),
+      prisma.discountCoupon.findMany({
+        where: { OR: [{ kind: "LOOK" }, { lookPostId: { not: null } }] },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+        include: {
+          customer: { select: { name: true, email: true } },
+          lookPost: { select: { id: true, imageUrl: true } },
+        },
+      }),
+      prisma.discountCoupon.findMany({
+        where: { kind: COUPON_KIND_INFLUENCER },
+        orderBy: { createdAt: "desc" },
+        take: 80,
+      }),
+    ]);
 
   const tabs = [
     { key: "PENDING", label: `Pendentes (${pendingCount})` },
@@ -65,12 +74,28 @@ export default async function AdminLooksPage({
           /looks
         </Link>{" "}
         e o sistema gera um cupom único de 10% (não acumula com o 5% do Pix).
+        Abaixo você também cria cupons para influencers do Instagram.
       </p>
       <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 px-3 py-2 mb-6 max-w-2xl">
         <strong>Consentimento Aceito</strong> só confirma que a cliente autorizou
         o uso da foto — <strong>não publica</strong>. Para aparecer na Galeria
         Majesté, o status precisa ser <strong>Aprovado</strong>.
       </p>
+
+      <InfluencerCouponAdmin
+        initialCoupons={influencerCoupons.map((c) => ({
+          id: c.id,
+          code: c.code,
+          percent: c.percent,
+          label: c.label,
+          maxUses: c.maxUses,
+          usageCount: c.usageCount,
+          active: c.active,
+          used: c.used,
+          expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+          createdAt: c.createdAt.toISOString(),
+        }))}
+      />
 
       <div className="flex flex-wrap gap-2 mb-6">
         {tabs.map((t) => {
@@ -209,7 +234,7 @@ export default async function AdminLooksPage({
         className="text-2xl mb-3"
         style={{ fontFamily: "var(--font-display)" }}
       >
-        Cupons gerados
+        Cupons de looks (Influence)
       </h2>
       <div className="border border-line bg-surface overflow-x-auto">
         <table className="table">
@@ -226,7 +251,7 @@ export default async function AdminLooksPage({
             {coupons.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-muted text-sm py-6 text-center">
-                  Nenhum cupom ainda. Aprove um look para gerar.
+                  Nenhum cupom de look ainda. Aprove um look para gerar.
                 </td>
               </tr>
             ) : (

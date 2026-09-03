@@ -36,7 +36,7 @@ import {
   resolveCheckoutPromotion,
 } from "@/lib/promotion-settings";
 import { applyPriceAdjust } from "@/lib/promotion-pricing";
-import { lookRewardPercent } from "@/lib/look-reward";
+import { lookRewardPercent, isInfluencerCoupon, resolveCouponPercent } from "@/lib/look-reward";
 import { defaultPayment } from "@/lib/site";
 import { checkoutSuccessPath } from "@/lib/order-access";
 import { isLocalShippingId } from "@/lib/shipping";
@@ -297,14 +297,31 @@ export async function POST(req: NextRequest) {
         include: { lookPost: true },
       });
       if (coupon) {
-        if (coupon.used) {
+        if (!coupon.active) {
           return NextResponse.json(
-            { error: "Este cupom já foi usado" },
+            { error: "Cupom desativado" },
             { status: 400 }
           );
         }
         if (coupon.expiresAt && coupon.expiresAt < new Date()) {
           return NextResponse.json({ error: "Cupom expirado" }, { status: 400 });
+        }
+        const influencer = isInfluencerCoupon(coupon);
+        if (influencer) {
+          if (
+            coupon.maxUses != null &&
+            coupon.usageCount >= coupon.maxUses
+          ) {
+            return NextResponse.json(
+              { error: "Este cupom atingiu o limite de usos" },
+              { status: 400 }
+            );
+          }
+        } else if (coupon.used) {
+          return NextResponse.json(
+            { error: "Este cupom já foi usado" },
+            { status: 400 }
+          );
         }
         if (coupon.customerId && coupon.customerId !== customer.id) {
           return NextResponse.json(
@@ -312,7 +329,7 @@ export async function POST(req: NextRequest) {
             { status: 403 }
           );
         }
-        couponPercentApplied = lookRewardPercent(coupon.percent);
+        couponPercentApplied = resolveCouponPercent(coupon);
         discount =
           Math.round(subtotal * (couponPercentApplied / 100) * 100) / 100;
         appliedCouponCode = coupon.code;
@@ -392,14 +409,26 @@ export async function POST(req: NextRequest) {
       });
 
       if (couponId) {
-        await tx.discountCoupon.update({
+        const current = await tx.discountCoupon.findUnique({
           where: { id: couponId },
-          data: {
-            used: true,
-            usedAt: new Date(),
-            orderId: created.id,
-          },
         });
+        if (current) {
+          const nextCount = (current.usageCount || 0) + 1;
+          const influencer = isInfluencerCoupon(current);
+          const exhausted =
+            influencer &&
+            current.maxUses != null &&
+            nextCount >= current.maxUses;
+          await tx.discountCoupon.update({
+            where: { id: couponId },
+            data: {
+              usageCount: nextCount,
+              used: influencer ? exhausted : true,
+              usedAt: new Date(),
+              orderId: created.id,
+            },
+          });
+        }
       }
       if (lookPostIdForCoupon) {
         await tx.lookPost.update({
