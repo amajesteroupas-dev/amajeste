@@ -422,21 +422,23 @@ model DiscountCoupon {
   id         String    @id @default(cuid())
   code       String    @unique
   percent    Float     @default(10)
-  /// LOOK = cupom único da cliente do look; INFLUENCER = código público multi-uso
+  /// LOOK = cupom único do look; INFLUENCER / PROMO = código público multi-uso
   kind       String    @default("LOOK")
-  /// Nome/@ da influencer (só INFLUENCER)
+  /// Nome/@ da influencer ou nome da promoção
   label      String?
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lookPostId String?   @unique
   lookPost   LookPost? @relation(fields: [lookPostId], references: [id], onDelete: SetNull)
-  /// LOOK: true após 1 uso. INFLUENCER: true só se atingir maxUses ou for desativado.
+  /// LOOK: true após 1 uso. Público: true se atingir maxUses ou for desativado.
   used       Boolean   @default(false)
   usedAt     DateTime?
   orderId    String?
-  /// null = usos ilimitados (cupons influencer)
+  /// null = usos ilimitados (cupons públicos)
   maxUses    Int?
   usageCount Int       @default(0)
+  /// Pedido mínimo no subtotal (R$). null = sem mínimo. Ex.: 199 para −20%.
+  minSubtotal Float?
   active     Boolean   @default(true)
   expiresAt  DateTime?
   createdAt  DateTime  @default(now())

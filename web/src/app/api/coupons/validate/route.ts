@@ -2,18 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer";
 import {
-  isInfluencerCoupon,
+  isPublicMultiUseCoupon,
   lookRewardPercent,
   resolveCouponPercent,
 } from "@/lib/look-reward";
+import { formatBRL } from "@/lib/utils";
 
-/** Valida cupom de look / influencer Instagram */
+/** Valida cupom de look / influencer / promoção do site */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const code = String(body.code || "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, "");
+  const subtotal = Math.max(0, Number(body.subtotal) || 0);
 
   if (!code) {
     return NextResponse.json({ error: "Informe o cupom" }, { status: 400 });
@@ -50,13 +52,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cupom expirado" }, { status: 400 });
   }
 
-  const influencer = isInfluencerCoupon(coupon);
+  const publicMulti = isPublicMultiUseCoupon(coupon);
 
-  if (influencer) {
-    if (
-      coupon.maxUses != null &&
-      coupon.usageCount >= coupon.maxUses
-    ) {
+  if (publicMulti) {
+    if (coupon.maxUses != null && coupon.usageCount >= coupon.maxUses) {
       return NextResponse.json(
         { error: "Este cupom atingiu o limite de usos" },
         { status: 400 }
@@ -76,12 +75,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cupom indisponível" }, { status: 400 });
   }
 
+  const minSub = Number(coupon.minSubtotal) || 0;
+  if (minSub > 0 && subtotal > 0 && subtotal + 0.001 < minSub) {
+    return NextResponse.json(
+      {
+        error: `Este cupom vale para compras a partir de ${formatBRL(minSub)} (subtotal atual: ${formatBRL(subtotal)})`,
+        minSubtotal: minSub,
+      },
+      { status: 400 }
+    );
+  }
+  if (minSub > 0 && subtotal <= 0) {
+    // Sem subtotal no body: avisa o mínimo, mas ainda deixa aplicar no preview
+    // (o pedido revalida com o subtotal real).
+  }
+
   return NextResponse.json({
     ok: true,
     code: coupon.code,
     percent: resolveCouponPercent(coupon),
     lookPostId: coupon.lookPostId,
-    kind: influencer ? "INFLUENCER" : "LOOK",
+    kind: publicMulti ? coupon.kind : "LOOK",
     label: coupon.label || undefined,
+    minSubtotal: minSub > 0 ? minSub : undefined,
   });
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueCouponCode } from "@/lib/coupon-code";
 import {
   COUPON_KIND_INFLUENCER,
+  COUPON_KIND_PROMO,
   LOOK_REWARD_PERCENT,
 } from "@/lib/look-reward";
 
@@ -15,7 +16,13 @@ function normalizeCode(raw: string) {
     .replace(/[^A-Z0-9_-]/g, "");
 }
 
-/** Lista cupons (influencer + looks). */
+function parseKind(raw: unknown) {
+  const k = String(raw || "").toUpperCase();
+  if (k === COUPON_KIND_PROMO) return COUPON_KIND_PROMO;
+  return COUPON_KIND_INFLUENCER;
+}
+
+/** Lista cupons. */
 export async function GET() {
   const session = await adminAuth();
   if (!session?.user || !["ADMIN", "STAFF"].includes(session.user.role)) {
@@ -35,8 +42,8 @@ export async function GET() {
 }
 
 /**
- * Cria cupom de influencer Instagram (público, multi-uso).
- * Body: { code?, label?, percent?, maxUses?, expiresAt? }
+ * Cria cupom público multi-uso.
+ * Body: { kind?: INFLUENCER|PROMO, code?, label?, percent?, maxUses?, minSubtotal?, expiresAt? }
  */
 export async function POST(req: NextRequest) {
   const session = await adminAuth();
@@ -45,6 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
+  const kind = parseKind(body.kind);
   const label = String(body.label || "")
     .trim()
     .slice(0, 80);
@@ -58,15 +66,24 @@ export async function POST(req: NextRequest) {
     if (Number.isFinite(n) && n > 0) maxUses = Math.min(100000, n);
   }
 
+  let minSubtotal: number | null = null;
+  if (body.minSubtotal != null && body.minSubtotal !== "") {
+    const n = Number(body.minSubtotal);
+    if (Number.isFinite(n) && n > 0) {
+      minSubtotal = Math.round(n * 100) / 100;
+    }
+  }
+
   let expiresAt: Date | null = null;
   if (body.expiresAt) {
     const d = new Date(String(body.expiresAt));
     if (!Number.isNaN(d.getTime())) expiresAt = d;
   }
 
+  const prefix = kind === COUPON_KIND_PROMO ? "PROMO" : "IG";
   let code = normalizeCode(String(body.code || ""));
   if (!code) {
-    code = await generateUniqueCouponCode("IG");
+    code = await generateUniqueCouponCode(prefix);
   } else {
     if (code.length < 3 || code.length > 32) {
       return NextResponse.json(
@@ -96,11 +113,12 @@ export async function POST(req: NextRequest) {
     data: {
       code,
       percent,
-      kind: COUPON_KIND_INFLUENCER,
+      kind,
       label: label || null,
       customerId: null,
       lookPostId: null,
       maxUses,
+      minSubtotal,
       usageCount: 0,
       active: true,
       used: false,

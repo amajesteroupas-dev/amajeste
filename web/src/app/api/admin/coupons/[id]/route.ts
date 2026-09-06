@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
-import { COUPON_KIND_INFLUENCER } from "@/lib/look-reward";
+import {
+  COUPON_KIND_INFLUENCER,
+  COUPON_KIND_PROMO,
+  isPublicMultiUseCoupon,
+} from "@/lib/look-reward";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Ativa/desativa ou ajusta cupom influencer. */
+/** Ativa/desativa ou ajusta cupom público (influencer / promoção). */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const session = await adminAuth();
   if (!session?.user || !["ADMIN", "STAFF"].includes(session.user.role)) {
@@ -17,9 +21,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!existing) {
     return NextResponse.json({ error: "Cupom não encontrado" }, { status: 404 });
   }
-  if (existing.kind !== COUPON_KIND_INFLUENCER) {
+  if (!isPublicMultiUseCoupon(existing)) {
     return NextResponse.json(
-      { error: "Só cupons de influencer podem ser editados aqui" },
+      { error: "Só cupons públicos (influencer/promoção) podem ser editados aqui" },
       { status: 400 }
     );
   }
@@ -31,7 +35,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     label?: string | null;
     percent?: number;
     maxUses?: number | null;
+    minSubtotal?: number | null;
     expiresAt?: Date | null;
+    kind?: string;
   } = {};
 
   if (typeof body.active === "boolean") {
@@ -57,12 +63,28 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       if (Number.isFinite(n) && n > 0) data.maxUses = Math.min(100000, n);
     }
   }
+  if (body.minSubtotal !== undefined) {
+    if (body.minSubtotal === null || body.minSubtotal === "") {
+      data.minSubtotal = null;
+    } else {
+      const n = Number(body.minSubtotal);
+      if (Number.isFinite(n) && n > 0) {
+        data.minSubtotal = Math.round(n * 100) / 100;
+      } else {
+        data.minSubtotal = null;
+      }
+    }
+  }
   if (body.expiresAt !== undefined) {
     if (!body.expiresAt) data.expiresAt = null;
     else {
       const d = new Date(String(body.expiresAt));
       if (!Number.isNaN(d.getTime())) data.expiresAt = d;
     }
+  }
+  if (body.kind != null) {
+    const k = String(body.kind).toUpperCase();
+    if (k === COUPON_KIND_PROMO || k === COUPON_KIND_INFLUENCER) data.kind = k;
   }
 
   const coupon = await prisma.discountCoupon.update({
@@ -73,7 +95,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ ok: true, coupon });
 }
 
-/** Remove cupom influencer. */
+/** Remove cupom público. */
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await adminAuth();
   if (!session?.user || !["ADMIN", "STAFF"].includes(session.user.role)) {
@@ -85,7 +107,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!existing) {
     return NextResponse.json({ error: "Cupom não encontrado" }, { status: 404 });
   }
-  if (existing.kind !== COUPON_KIND_INFLUENCER) {
+  if (!isPublicMultiUseCoupon(existing)) {
     return NextResponse.json(
       { error: "Cupons de look não podem ser excluídos por aqui" },
       { status: 400 }

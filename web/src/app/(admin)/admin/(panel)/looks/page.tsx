@@ -4,7 +4,7 @@ import { LookStatusForm } from "@/components/admin/LookStatusForm";
 import { LookPhotoViewButton } from "@/components/admin/LookPhotoViewButton";
 import { InfluencerCouponAdmin } from "@/components/admin/InfluencerCouponAdmin";
 import { formatConsentDate } from "@/lib/look-image-consent";
-import { COUPON_KIND_INFLUENCER } from "@/lib/look-reward";
+import { COUPON_KIND_INFLUENCER, COUPON_KIND_PROMO } from "@/lib/look-reward";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,9 @@ export default async function AdminLooksPage({
         },
       }),
       prisma.discountCoupon.findMany({
-        where: { kind: COUPON_KIND_INFLUENCER },
+        where: {
+          kind: { in: [COUPON_KIND_INFLUENCER, COUPON_KIND_PROMO] },
+        },
         orderBy: { createdAt: "desc" },
         take: 80,
       }),
@@ -87,8 +89,10 @@ export default async function AdminLooksPage({
           id: c.id,
           code: c.code,
           percent: c.percent,
+          kind: c.kind,
           label: c.label,
           maxUses: c.maxUses,
+          minSubtotal: c.minSubtotal,
           usageCount: c.usageCount,
           active: c.active,
           used: c.used,

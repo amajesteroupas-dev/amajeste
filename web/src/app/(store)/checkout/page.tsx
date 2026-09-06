@@ -324,7 +324,7 @@ export default function CheckoutPage() {
     const res = await fetch("/api/coupons/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, subtotal: cartSub }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -333,7 +333,13 @@ export default function CheckoutPage() {
       return;
     }
     setCouponApplied({ code: data.code, percent: data.percent });
-    setCouponMsg(`Cupom ${data.code} · −${data.percent}% no subtotal`);
+    const minNote =
+      data.minSubtotal && Number(data.minSubtotal) > 0
+        ? ` · a partir de ${formatBRL(Number(data.minSubtotal))}`
+        : "";
+    setCouponMsg(
+      `Cupom ${data.code} · −${data.percent}% no subtotal${minNote}`
+    );
   }
 
   async function placeOrder(extra?: {

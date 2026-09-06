@@ -2,13 +2,21 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatBRL } from "@/lib/utils";
+import {
+  COUPON_KIND_INFLUENCER,
+  COUPON_KIND_PROMO,
+  couponKindLabel,
+} from "@/lib/look-reward";
 
-type InfluencerCoupon = {
+type PublicCoupon = {
   id: string;
   code: string;
   percent: number;
+  kind: string;
   label: string | null;
   maxUses: number | null;
+  minSubtotal: number | null;
   usageCount: number;
   active: boolean;
   used: boolean;
@@ -17,20 +25,24 @@ type InfluencerCoupon = {
 };
 
 type Props = {
-  initialCoupons: InfluencerCoupon[];
+  initialCoupons: PublicCoupon[];
 };
 
 export function InfluencerCouponAdmin({ initialCoupons }: Props) {
   const router = useRouter();
   const [coupons, setCoupons] = useState(initialCoupons);
+  const [kind, setKind] = useState<string>(COUPON_KIND_PROMO);
   const [label, setLabel] = useState("");
   const [code, setCode] = useState("");
-  const [percent, setPercent] = useState(10);
+  const [percent, setPercent] = useState(20);
+  const [minSubtotal, setMinSubtotal] = useState("199");
   const [maxUses, setMaxUses] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+
+  const isPromo = kind === COUPON_KIND_PROMO;
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -42,9 +54,11 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          kind,
           label: label.trim() || undefined,
           code: code.trim() || undefined,
           percent,
+          minSubtotal: minSubtotal.trim() ? Number(minSubtotal) : null,
           maxUses: maxUses.trim() ? Number(maxUses) : null,
           expiresAt: expiresAt || null,
         }),
@@ -54,13 +68,19 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
         setError(data.error || "Não foi possível criar o cupom");
         return;
       }
-      setMsg(`Cupom ${data.coupon.code} criado (−${data.coupon.percent}%).`);
+      const c = data.coupon as PublicCoupon;
+      const minNote =
+        c.minSubtotal && c.minSubtotal > 0
+          ? ` · mínimo ${formatBRL(c.minSubtotal)}`
+          : "";
+      setMsg(`Cupom ${c.code} criado (−${c.percent}%${minNote}).`);
       setLabel("");
       setCode("");
-      setPercent(10);
+      setPercent(isPromo ? 20 : 10);
+      setMinSubtotal(isPromo ? "199" : "");
       setMaxUses("");
       setExpiresAt("");
-      setCoupons((prev) => [data.coupon, ...prev]);
+      setCoupons((prev) => [c, ...prev]);
       router.refresh();
     } catch {
       setError("Falha de rede ao criar cupom");
@@ -69,7 +89,7 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
     }
   }
 
-  async function toggleActive(c: InfluencerCoupon) {
+  async function toggleActive(c: PublicCoupon) {
     setError("");
     const res = await fetch(`/api/admin/coupons/${c.id}`, {
       method: "PATCH",
@@ -87,7 +107,7 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
     router.refresh();
   }
 
-  async function removeCoupon(c: InfluencerCoupon) {
+  async function removeCoupon(c: PublicCoupon) {
     if (!confirm(`Excluir o cupom ${c.code}?`)) return;
     setError("");
     const res = await fetch(`/api/admin/coupons/${c.id}`, { method: "DELETE" });
@@ -107,12 +127,13 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
           className="text-2xl mb-1"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Cupons de influencer (Instagram)
+          Cupons públicos
         </h2>
         <p className="text-sm text-muted max-w-2xl">
-          Crie um código para a influencer divulgar no Instagram. Qualquer
-          seguidora pode usar no checkout (não acumula com Pix nem promoção do
-          site). Deixe o limite de usos em branco para usos ilimitados.
+          Crie códigos para <strong>promoção do site</strong> (ex.: 20% em
+          compras acima de R$ 199) ou para <strong>influencer</strong> do
+          Instagram. Qualquer cliente pode usar no checkout (não acumula com Pix
+          nem promoção automática do site).
         </p>
       </div>
 
@@ -121,10 +142,33 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
         className="border border-line bg-surface p-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
       >
         <label className="block text-xs text-[#5c534c]">
-          Nome / @ da influencer
+          Tipo
+          <select
+            className="input mt-1.5"
+            value={kind}
+            onChange={(e) => {
+              const next = e.target.value;
+              setKind(next);
+              if (next === COUPON_KIND_PROMO) {
+                setPercent(20);
+                setMinSubtotal("199");
+              } else {
+                setPercent(10);
+                setMinSubtotal("");
+              }
+            }}
+          >
+            <option value={COUPON_KIND_PROMO}>Promoção do site</option>
+            <option value={COUPON_KIND_INFLUENCER}>Influencer Instagram</option>
+          </select>
+        </label>
+        <label className="block text-xs text-[#5c534c]">
+          {isPromo ? "Nome da promoção" : "Nome / @ da influencer"}
           <input
             className="input mt-1.5"
-            placeholder="@nome.influencer"
+            placeholder={
+              isPromo ? "Ex.: Semana Majesté −20%" : "@nome.influencer"
+            }
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
@@ -133,7 +177,11 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
           Código do cupom (opcional)
           <input
             className="input mt-1.5 uppercase"
-            placeholder="Ex.: MARIA10 (vazio = gera sozinho)"
+            placeholder={
+              isPromo
+                ? "Ex.: MAJESTE20 (vazio = gera sozinho)"
+                : "Ex.: MARIA10 (vazio = gera sozinho)"
+            }
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
           />
@@ -150,6 +198,21 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
             onChange={(e) => setPercent(Number(e.target.value) || 10)}
             required
           />
+        </label>
+        <label className="block text-xs text-[#5c534c]">
+          Compra mínima (R$)
+          <input
+            className="input mt-1.5"
+            type="number"
+            min={0}
+            step={0.01}
+            placeholder="Sem mínimo"
+            value={minSubtotal}
+            onChange={(e) => setMinSubtotal(e.target.value)}
+          />
+          <span className="block mt-1 text-[11px] text-[#8a7468]">
+            Ex.: 199 = cupom só vale se o subtotal for ≥ R$ 199,00
+          </span>
         </label>
         <label className="block text-xs text-[#5c534c]">
           Limite de usos (opcional)
@@ -197,8 +260,10 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
           <thead>
             <tr>
               <th>Código</th>
-              <th>Influencer</th>
+              <th>Tipo</th>
+              <th>Nome</th>
               <th>%</th>
+              <th>Mínimo</th>
               <th>Usos</th>
               <th>Status</th>
               <th>Ações</th>
@@ -207,8 +272,9 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
           <tbody>
             {coupons.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted text-sm py-6 text-center">
-                  Nenhum cupom de influencer ainda. Crie o primeiro acima.
+                <td colSpan={8} className="text-muted text-sm py-6 text-center">
+                  Nenhum cupom público ainda. Crie o primeiro acima (ex.: 20%
+                  acima de R$ 199).
                 </td>
               </tr>
             ) : (
@@ -222,8 +288,14 @@ export function InfluencerCouponAdmin({ initialCoupons }: Props) {
                     <td>
                       <code className="font-semibold">{c.code}</code>
                     </td>
+                    <td>{couponKindLabel(c.kind)}</td>
                     <td>{c.label || "—"}</td>
                     <td>−{c.percent}%</td>
+                    <td>
+                      {c.minSubtotal && c.minSubtotal > 0
+                        ? formatBRL(c.minSubtotal)
+                        : "—"}
+                    </td>
                     <td>
                       {c.usageCount}
                       {c.maxUses != null ? ` / ${c.maxUses}` : " · ilimitado"}

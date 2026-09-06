@@ -3,6 +3,8 @@ export const LOOK_REWARD_PERCENT = 10;
 
 export const COUPON_KIND_LOOK = "LOOK";
 export const COUPON_KIND_INFLUENCER = "INFLUENCER";
+/** Promoção do site com código (ex.: 20% acima de R$ 199). */
+export const COUPON_KIND_PROMO = "PROMO";
 
 /** Sempre a taxa atual do programa Influence (não usa % antigo do registro). */
 export function lookRewardPercent(_unused?: number | null) {
@@ -13,7 +15,7 @@ export function lookRewardPercent(_unused?: number | null) {
 /**
  * % aplicado no checkout.
  * Looks Influence → sempre LOOK_REWARD_PERCENT.
- * Cupons de influencer Instagram → % cadastrado no painel.
+ * Cupons públicos (influencer / promoção) → % cadastrado no painel.
  */
 export function resolveCouponPercent(coupon: {
   percent?: number | null;
@@ -30,12 +32,28 @@ export function resolveCouponPercent(coupon: {
   return Math.min(90, Math.max(1, Math.round(p * 100) / 100));
 }
 
+/** Cupom público multi-uso (influencer Instagram ou promoção do site). */
+export function isPublicMultiUseCoupon(coupon: {
+  kind?: string | null;
+  lookPostId?: string | null;
+}) {
+  if (coupon.lookPostId) return false;
+  return (
+    coupon.kind === COUPON_KIND_INFLUENCER ||
+    coupon.kind === COUPON_KIND_PROMO
+  );
+}
+
+/** @deprecated use isPublicMultiUseCoupon */
 export function isInfluencerCoupon(coupon: {
   kind?: string | null;
   lookPostId?: string | null;
 }) {
-  return (
-    coupon.kind === COUPON_KIND_INFLUENCER &&
-    (coupon.lookPostId == null || coupon.lookPostId === "")
-  );
+  return isPublicMultiUseCoupon(coupon);
+}
+
+export function couponKindLabel(kind?: string | null) {
+  if (kind === COUPON_KIND_PROMO) return "Promoção";
+  if (kind === COUPON_KIND_INFLUENCER) return "Influencer";
+  return "Look";
 }

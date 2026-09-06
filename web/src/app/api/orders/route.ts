@@ -36,7 +36,8 @@ import {
   resolveCheckoutPromotion,
 } from "@/lib/promotion-settings";
 import { applyPriceAdjust } from "@/lib/promotion-pricing";
-import { lookRewardPercent, isInfluencerCoupon, resolveCouponPercent } from "@/lib/look-reward";
+import { lookRewardPercent, isPublicMultiUseCoupon, resolveCouponPercent } from "@/lib/look-reward";
+import { formatBRL } from "@/lib/utils";
 import { defaultPayment } from "@/lib/site";
 import { checkoutSuccessPath } from "@/lib/order-access";
 import { isLocalShippingId } from "@/lib/shipping";
@@ -306,8 +307,8 @@ export async function POST(req: NextRequest) {
         if (coupon.expiresAt && coupon.expiresAt < new Date()) {
           return NextResponse.json({ error: "Cupom expirado" }, { status: 400 });
         }
-        const influencer = isInfluencerCoupon(coupon);
-        if (influencer) {
+        const publicMulti = isPublicMultiUseCoupon(coupon);
+        if (publicMulti) {
           if (
             coupon.maxUses != null &&
             coupon.usageCount >= coupon.maxUses
@@ -327,6 +328,15 @@ export async function POST(req: NextRequest) {
           return NextResponse.json(
             { error: "Este cupom é exclusivo de outra cliente" },
             { status: 403 }
+          );
+        }
+        const minSub = Number(coupon.minSubtotal) || 0;
+        if (minSub > 0 && subtotal + 0.001 < minSub) {
+          return NextResponse.json(
+            {
+              error: `Este cupom vale para compras a partir de ${formatBRL(minSub)}`,
+            },
+            { status: 400 }
           );
         }
         couponPercentApplied = resolveCouponPercent(coupon);
@@ -414,16 +424,16 @@ export async function POST(req: NextRequest) {
         });
         if (current) {
           const nextCount = (current.usageCount || 0) + 1;
-          const influencer = isInfluencerCoupon(current);
+          const publicMulti = isPublicMultiUseCoupon(current);
           const exhausted =
-            influencer &&
+            publicMulti &&
             current.maxUses != null &&
             nextCount >= current.maxUses;
           await tx.discountCoupon.update({
             where: { id: couponId },
             data: {
               usageCount: nextCount,
-              used: influencer ? exhausted : true,
+              used: publicMulti ? exhausted : true,
               usedAt: new Date(),
               orderId: created.id,
             },
