@@ -512,7 +512,7 @@ export function BannerEditor({ bannerId }: Props) {
             id: asset.id,
             url: asset.url,
             thumbUrl: asset.thumbUrl || asset.url,
-            alt: asset.alt,
+            alt: asset.alt ?? null,
             source: mediaBank === "cutout" ? "cutout" : "upload",
           },
           ...prev,

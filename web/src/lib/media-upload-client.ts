@@ -62,6 +62,6 @@ export async function uploadAdminMediaFile(opts: UploadAdminMediaOpts) {
     id: string;
     url: string;
     thumbUrl?: string;
-    alt?: string;
+    alt?: string | null;
   };
 }
