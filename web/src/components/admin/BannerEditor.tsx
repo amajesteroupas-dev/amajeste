@@ -497,23 +497,29 @@ export function BannerEditor({ bannerId }: Props) {
 
   async function onUpload(files: File[]) {
     for (const file of files) {
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("mode", mediaBank === "cutout" ? "cutout" : "upload");
-      if (mediaBank === "cutout") fd.set("alt", "Modelo recortada");
-      const res = await fetch("/api/admin/media", { method: "POST", body: fd });
-      if (!res.ok) continue;
-      const asset = await res.json();
-      setLibrary((prev) => [
-        {
-          id: asset.id,
-          url: asset.url,
-          thumbUrl: asset.thumbUrl || asset.url,
-          alt: asset.alt,
-          source: mediaBank === "cutout" ? "cutout" : "upload",
-        },
-        ...prev,
-      ]);
+      try {
+        if (!file.size) continue;
+        const { uploadAdminMediaFile } = await import(
+          "@/lib/media-upload-client"
+        );
+        const asset = await uploadAdminMediaFile({
+          file,
+          mode: mediaBank === "cutout" ? "cutout" : "upload",
+          alt: mediaBank === "cutout" ? "Modelo recortada" : undefined,
+        });
+        setLibrary((prev) => [
+          {
+            id: asset.id,
+            url: asset.url,
+            thumbUrl: asset.thumbUrl || asset.url,
+            alt: asset.alt,
+            source: mediaBank === "cutout" ? "cutout" : "upload",
+          },
+          ...prev,
+        ]);
+      } catch {
+        /* próxima foto */
+      }
     }
   }
 

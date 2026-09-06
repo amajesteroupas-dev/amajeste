@@ -205,17 +205,18 @@ export function EmailMarketingAdmin() {
   async function onUpload(file: File | null) {
     if (!file) return;
     setBusy(true);
-    const fd = new FormData();
-    fd.set("file", file);
-    const res = await fetch("/api/admin/media", { method: "POST", body: fd });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) {
-      alert(data.error || "Falha no upload");
-      return;
+    try {
+      const { uploadAdminMediaFile } = await import(
+        "@/lib/media-upload-client"
+      );
+      const data = await uploadAdminMediaFile({ file, mode: "upload" });
+      setImageUrl(data.url || data.thumbUrl || "");
+      setMsg("Imagem enviada — veja a prévia ao lado");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Falha no upload");
+    } finally {
+      setBusy(false);
     }
-    setImageUrl(data.url || data.thumbUrl || "");
-    setMsg("Imagem enviada — veja a prévia ao lado");
   }
 
   async function saveCreative(e: FormEvent) {

@@ -7,6 +7,7 @@ import {
   type MediaGalleryItem,
 } from "@/components/admin/MediaGallery";
 import { cutoutFromFile } from "@/lib/cutout-client";
+import { uploadAdminMediaFile } from "@/lib/media-upload-client";
 
 export function MediaLibraryAdmin() {
   const [items, setItems] = useState<MediaGalleryItem[]>([]);
@@ -34,27 +35,30 @@ export function MediaLibraryAdmin() {
     setStatus("");
     let ok = 0;
     let fail = 0;
+    const errors: string[] = [];
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setStatus(`Enviando ${i + 1} de ${files.length}: ${file.name}`);
+        setStatus(`Enviando ${i + 1} de ${files.length}: ${file.name || "foto"}`);
         try {
-          const fd = new FormData();
-          fd.set("file", file);
-          fd.set("mode", bank === "cutout" ? "cutout" : "upload");
+          if (!file.size) {
+            throw new Error(
+              "Arquivo vazio no iPhone. Tire a foto de novo em JPG ou use “Mais compatíveis”."
+            );
+          }
           const baseName = file.name.replace(/\.[^.]+$/, "").trim();
-          fd.set(
-            "alt",
-            baseName || (bank === "cutout" ? "Modelo recortada" : file.name)
-          );
-          const res = await fetch("/api/admin/media", {
-            method: "POST",
-            body: fd,
+          await uploadAdminMediaFile({
+            file,
+            mode: bank === "cutout" ? "cutout" : "upload",
+            alt:
+              baseName ||
+              (bank === "cutout" ? "Modelo recortada" : file.name || "Foto"),
           });
-          if (!res.ok) throw new Error("falha");
           ok += 1;
-        } catch {
+        } catch (e) {
           fail += 1;
+          const msg = e instanceof Error ? e.message : "Falha no envio";
+          if (errors.length < 3) errors.push(`${file.name || "foto"}: ${msg}`);
         }
       }
       await load();
@@ -65,7 +69,11 @@ export function MediaLibraryAdmin() {
             : `${ok} fotos adicionadas ao banco`
         );
       } else {
-        setStatus(`${ok} enviada(s), ${fail} falhou(aram)`);
+        setStatus(
+          `${ok} enviada(s), ${fail} falhou(aram)${
+            errors.length ? ` — ${errors.join(" · ")}` : ""
+          }`
+        );
       }
     } finally {
       setBusy(false);

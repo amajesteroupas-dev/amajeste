@@ -404,7 +404,7 @@ export function MediaGallery({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif,image/heic,image/heif"
                 multiple
                 className="hidden"
                 disabled={uploadBusy}
@@ -474,10 +474,10 @@ export function MediaGallery({
               ? uploadProgress || "Enviando…"
               : dragging
                 ? "Solte as fotos aqui"
-                : "Arraste fotos aqui · Ctrl+V para colar · ou use o botão Adicionar fotos"}
+                : "Arraste fotos aqui · Ctrl+V · ou Adicionar fotos (iPhone/Android/web)"}
           </p>
           <p className="text-xs text-muted mt-1">
-            JPEG, PNG, WebP e similares. Várias de uma vez.
+            JPEG, PNG, WebP, HEIC (iPhone) e similares. Várias de uma vez.
           </p>
         </div>
       ) : null}
