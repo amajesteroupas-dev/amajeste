@@ -30,6 +30,7 @@ export function LiveVideoFloat({
   const [open, setOpen] = useState(false);
   const [previewIdx, setPreviewIdx] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lastOpenAtRef = useRef(0);
   const { session } = useLiveMiniPlayer();
 
   useEffect(() => {
@@ -92,6 +93,14 @@ export function LiveVideoFloat({
     setPreviewIdx((i) => (i + 1) % stories.length);
   }
 
+  function openStories() {
+    const now = Date.now();
+    // iOS dispara touch + click; evita abrir/fechar em sequência
+    if (now - lastOpenAtRef.current < 500) return;
+    lastOpenAtRef.current = now;
+    setOpen(true);
+  }
+
   if (!enabled) return null;
 
   return (
@@ -102,11 +111,20 @@ export function LiveVideoFloat({
           role="button"
           tabIndex={0}
           aria-label="Abrir stories Majesté"
-          onClick={() => setOpen(true)}
+          onPointerUp={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openStories();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openStories();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              setOpen(true);
+              openStories();
             }
           }}
         >

@@ -42,6 +42,13 @@ function storyFrameSize() {
   return { w: Math.round(w), h: Math.round(h) };
 }
 
+/** iOS Safari: força o 1º frame e evita tela preta no <video>. */
+function iosFriendlySrc(src: string) {
+  if (!src) return src;
+  if (src.includes("#")) return src;
+  return `${src}#t=0.001`;
+}
+
 export function StoriesPlayer({
   stories,
   surveyQuestions = [],
@@ -64,10 +71,13 @@ export function StoriesPlayer({
   const [size, setSize] = useState(storyFrameSize());
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const overlayReadyRef = useRef(false);
+  const errorSkipsRef = useRef(0);
   const { startMini } = useLiveMiniPlayer();
 
   const story = stories[index] || null;
   const playback = story ? resolveVideoPlayback(story.videoUrl) : null;
+  const videoSrc =
+    playback?.kind === "file" ? iosFriendlySrc(playback.src) : null;
 
   const surveyItems = useMemo(() => {
     if (!surveyEnabled) return [];
@@ -133,11 +143,12 @@ export function StoriesPlayer({
     setSending(false);
     setLiked(false);
     setSize(storyFrameSize());
-    // iOS: ignora cliques no overlay imediatamente após abrir (evento da bolinha propaga)
+    // iOS: ignora toques no overlay logo após abrir (o mesmo gesto da bolinha propagava e fechava)
     overlayReadyRef.current = false;
+    errorSkipsRef.current = 0;
     const t = setTimeout(() => {
       overlayReadyRef.current = true;
-    }, 350);
+    }, 450);
     return () => clearTimeout(t);
   }, [open, initialIndex, stories.length]);
 
@@ -180,33 +191,40 @@ export function StoriesPlayer({
 
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !open || phase !== "play") return;
+    if (!el || !open || phase !== "play" || !videoSrc) return;
     const video = el;
-    video.setAttribute("playsinline", "");
-    video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.playsInline = true;
     video.muted = muted;
+    video.defaultMuted = muted;
     function onTime() {
       if (!video.duration || !Number.isFinite(video.duration)) return;
       setProgress(video.currentTime / video.duration);
     }
     const tryPlay = () => {
-      void video.play().catch(() => {
-        // iOS/Safari fallback: if autoplay with sound is denied, force mute and retry.
-        if (!video.muted) {
-          video.muted = true;
-          setMuted(true);
-          void video.play().catch(() => undefined);
-        }
-      });
+      const p = video.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // iOS/Safari: autoplay com som é bloqueado — mute e tenta de novo.
+          if (!video.muted) {
+            video.muted = true;
+            setMuted(true);
+            void video.play().catch(() => undefined);
+          }
+        });
+      }
     };
     tryPlay();
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
     return () => {
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
     };
-  }, [open, index, playback?.src, phase, muted]);
+  }, [open, index, videoSrc, phase, muted]);
 
   function finishClose() {
     onClose();
@@ -317,7 +335,19 @@ export function StoriesPlayer({
     }
   }
 
-  if (!open || !story || !playback || playback.kind !== "file") return null;
+  if (!open || !story || !playback || playback.kind !== "file" || !videoSrc) {
+    return null;
+  }
+
+  function onVideoError() {
+    // Evita fechar a sequência inteira no iPhone quando o 1º frame falha / Range ainda falha.
+    errorSkipsRef.current += 1;
+    if (errorSkipsRef.current > stories.length) {
+      finishClose();
+      return;
+    }
+    go(1);
+  }
 
   return (
     <div
@@ -325,10 +355,15 @@ export function StoriesPlayer({
       role="dialog"
       aria-modal="true"
       aria-label="Stories Majesté"
-      onClick={() => {
-        if (!overlayReadyRef.current) return;
+      onPointerDown={(e) => {
+        // Só fecha com toque no fundo, depois do gesto de abertura.
+        if (!overlayReadyRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (phase === "survey") return;
-        finishClose();
+        if (e.target === e.currentTarget) finishClose();
       }}
     >
       <div
@@ -381,17 +416,17 @@ export function StoriesPlayer({
 
             <video
               ref={videoRef}
-              key={playback.src}
+              key={videoSrc}
               className="stories-video"
+              src={videoSrc}
               autoPlay
               playsInline
               muted={muted}
               preload="auto"
+              controls={false}
               onEnded={() => go(1)}
-              onError={() => go(1)}
-            >
-              <source src={playback.src} type="video/mp4" />
-            </video>
+              onError={onVideoError}
+            />
 
             <button
               type="button"
