@@ -38,7 +38,12 @@ function detectPlatform(): Platform {
 async function ensureServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    const reg = await navigator.serviceWorker.register("/sw.js?v=3", {
+      scope: "/",
+      updateViaCache: "none",
+    });
+    // Força o SW novo (sem interceptar fetch) a assumir o controle no iPhone
+    void reg.update();
   } catch {
     /* ignore */
   }
