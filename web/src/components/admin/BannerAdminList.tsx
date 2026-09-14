@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { parseCutoutLayers, type CutoutLayer } from "@/lib/cutout-layout";
 import {
@@ -33,6 +33,8 @@ type Banner = {
   sortOrder: number;
   active: boolean;
 };
+
+type ActiveFilter = "all" | "active" | "inactive";
 
 function firstVideoUrl(b: Banner): string | null {
   const clips = parseBannerVideos(b.videoPlaylist, b.videoUrl, b.videoSeconds);
@@ -159,17 +161,29 @@ function BannerListThumb({ b }: { b: Banner }) {
   }
 
   if (layout === "promo") {
+    const panel = b.panelColor || "#1a2744";
+    const light =
+      /^#(ebe3d8|f0e8df|faf7f3|fff|ffffff)$/i.test(panel) ||
+      panel.toLowerCase().startsWith("#e") ||
+      panel.toLowerCase().startsWith("#f");
+    const ink = light ? "#5c4336" : "#ffffff";
     return (
       <div className="relative w-full h-full flex overflow-hidden">
         <div
           className="w-[48%] h-full flex flex-col justify-center px-2.5"
-          style={{ background: b.panelColor || "#1a2744" }}
+          style={{ background: panel }}
         >
-          <p className="text-[9px] font-semibold text-white line-clamp-2 uppercase">
+          <p
+            className="text-[9px] font-semibold line-clamp-2 uppercase"
+            style={{ color: ink }}
+          >
             {b.title}
           </p>
           {b.highlight ? (
-            <p className="text-[10px] font-bold text-white mt-0.5 truncate">
+            <p
+              className="text-[10px] font-bold mt-0.5 truncate"
+              style={{ color: ink }}
+            >
               {b.highlight}
             </p>
           ) : null}
@@ -177,7 +191,7 @@ function BannerListThumb({ b }: { b: Banner }) {
         <div className="flex-1 relative" style={{ background: bg }}>
           <VideoOrImageThumb
             b={b}
-            className="absolute inset-0 h-full w-full object-contain object-bottom"
+            className="absolute inset-0 h-full w-full object-cover object-center"
           />
         </div>
       </div>
@@ -237,6 +251,7 @@ export function BannerAdminList() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
 
   async function load() {
     setLoading(true);
@@ -253,6 +268,22 @@ export function BannerAdminList() {
   useEffect(() => {
     load();
   }, []);
+
+  const counts = useMemo(() => {
+    let active = 0;
+    let inactive = 0;
+    for (const b of banners) {
+      if (b.active) active += 1;
+      else inactive += 1;
+    }
+    return { all: banners.length, active, inactive };
+  }, [banners]);
+
+  const visible = useMemo(() => {
+    if (activeFilter === "active") return banners.filter((b) => b.active);
+    if (activeFilter === "inactive") return banners.filter((b) => !b.active);
+    return banners;
+  }, [banners, activeFilter]);
 
   async function createBanner() {
     const res = await fetch("/api/admin/banners", {
@@ -295,11 +326,22 @@ export function BannerAdminList() {
   }
 
   async function move(id: string, dir: -1 | 1) {
-    const idx = banners.findIndex((b) => b.id === id);
-    const swap = idx + dir;
-    if (swap < 0 || swap >= banners.length) return;
-    const next = [...banners];
-    [next[idx], next[swap]] = [next[swap], next[idx]];
+    const filteredIdx = visible.findIndex((b) => b.id === id);
+    const swap = filteredIdx + dir;
+    if (filteredIdx < 0 || swap < 0 || swap >= visible.length) return;
+
+    const nextVisible = [...visible];
+    [nextVisible[filteredIdx], nextVisible[swap]] = [
+      nextVisible[swap],
+      nextVisible[filteredIdx],
+    ];
+
+    const visibleIds = new Set(visible.map((b) => b.id));
+    let vi = 0;
+    const next = banners.map((b) =>
+      visibleIds.has(b.id) ? nextVisible[vi++] : b
+    );
+
     setBanners(next);
     await fetch("/api/admin/banners", {
       method: "PATCH",
@@ -317,6 +359,12 @@ export function BannerAdminList() {
   if (loading) return <p className="text-muted">Carregando...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
 
+  const filters: { id: ActiveFilter; label: string; count: number }[] = [
+    { id: "all", label: "Todos", count: counts.all },
+    { id: "active", label: "Ativos", count: counts.active },
+    { id: "inactive", label: "Desativados", count: counts.inactive },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -332,8 +380,37 @@ export function BannerAdminList() {
         </button>
       </div>
 
+      <div
+        className="flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="Filtrar banners por status"
+      >
+        {filters.map((f) => {
+          const on = activeFilter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              className={`btn !py-2 !px-3 text-xs ${
+                on ? "btn-dark" : "btn-outline"
+              }`}
+              onClick={() => setActiveFilter(f.id)}
+            >
+              {f.label}
+              <span
+                className={`ml-1.5 tabular-nums ${on ? "opacity-80" : "text-muted"}`}
+              >
+                {f.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="space-y-3">
-        {banners.map((b, i) => (
+        {visible.map((b, i) => (
           <div
             key={b.id}
             className="bg-white border border-black/10 p-4 flex flex-col md:flex-row gap-4 items-stretch"
@@ -349,7 +426,19 @@ export function BannerAdminList() {
                 {b.highlight || b.promoText || b.subtitle || "Sem textos ainda"}
               </p>
               <p className="text-xs text-muted mt-2">
-                {b.active ? "Ativo" : "Inativo"} · ordem {i + 1} ·{" "}
+                <span
+                  className={
+                    b.active
+                      ? "text-emerald-800 font-medium"
+                      : "text-muted font-medium"
+                  }
+                >
+                  {b.active ? "Ativo" : "Desativado"}
+                </span>
+                {" · "}
+                ordem {i + 1}
+                {activeFilter !== "all" ? " nesta lista" : ""}
+                {" · "}
                 {LAYOUT_LABEL[b.layout] || b.layout || "Estúdio"}
               </p>
             </div>
@@ -358,6 +447,7 @@ export function BannerAdminList() {
                 type="button"
                 className="btn btn-outline !py-2 !px-3 text-xs"
                 onClick={() => move(b.id, -1)}
+                disabled={i === 0}
               >
                 ↑
               </button>
@@ -365,6 +455,7 @@ export function BannerAdminList() {
                 type="button"
                 className="btn btn-outline !py-2 !px-3 text-xs"
                 onClick={() => move(b.id, 1)}
+                disabled={i === visible.length - 1}
               >
                 ↓
               </button>
@@ -391,9 +482,13 @@ export function BannerAdminList() {
             </div>
           </div>
         ))}
-        {banners.length === 0 && (
+        {visible.length === 0 && (
           <p className="text-muted bg-white border border-black/10 p-6">
-            Nenhum banner ainda. Crie o primeiro para aparecer na home.
+            {banners.length === 0
+              ? "Nenhum banner ainda. Crie o primeiro para aparecer na home."
+              : activeFilter === "active"
+                ? "Nenhum banner ativo. Ative um na lista Desativados."
+                : "Nenhum banner desativado."}
           </p>
         )}
       </div>
