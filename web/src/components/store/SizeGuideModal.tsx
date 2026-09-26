@@ -2,21 +2,16 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { getSizeGuide, type SizeGuideId } from "@/lib/size-guides";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   /** Foto do banco de imagens (recortada) */
   imageUrl?: string | null;
+  /** Qual tabela mostrar: mg (atual) ou pmg (novo fornecedor). */
+  sizeGuide?: SizeGuideId | string | null;
 };
-
-const SIZE_ROW = { label: "VESTE", m: "36 - 38", g: "40 - 42" } as const;
-
-const ROWS = [
-  { label: "BUSTO", m: "80 - 100 CM", g: "101 - 112 CM" },
-  { label: "CINTURA", m: "68 - 80 CM", g: "81 - 94 CM" },
-  { label: "QUADRIL", m: "90 - 105 CM", g: "105 - 122 CM" },
-] as const;
 
 const MARKERS = [
   { label: "BUSTO", top: "29%" },
@@ -57,7 +52,13 @@ function MeasurePhoto({ src }: { src: string }) {
   );
 }
 
-export function SizeGuideModal({ open, onClose, imageUrl }: Props) {
+export function SizeGuideModal({
+  open,
+  onClose,
+  imageUrl,
+  sizeGuide,
+}: Props) {
+  const guide = getSizeGuide(sizeGuide);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -131,42 +132,41 @@ export function SizeGuideModal({ open, onClose, imageUrl }: Props) {
                     <th className="py-2.5 px-3" aria-hidden>
                       &nbsp;
                     </th>
-                    <th className="py-2.5 px-3 text-center font-semibold tracking-wider bg-[#5c4336] text-white">
-                      M
-                    </th>
-                    <th className="py-2.5 px-3 text-center font-semibold tracking-wider bg-[#5c4336] text-white">
-                      G
-                    </th>
+                    {guide.columns.map((col) => (
+                      <th
+                        key={col.key}
+                        className="py-2.5 px-3 text-center font-semibold tracking-wider bg-[#5c4336] text-white"
+                      >
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-white/70">
-                    <th className="py-2.5 px-3 text-left font-semibold tracking-wider text-xs bg-[#5c4336] text-white">
-                      {SIZE_ROW.label}
-                    </th>
-                    <td className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]">
-                      {SIZE_ROW.m}
-                    </td>
-                    <td className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]">
-                      {SIZE_ROW.g}
-                    </td>
-                  </tr>
-                  {ROWS.map((row, i) => (
+                  {guide.rows.map((row, i) => (
                     <tr
                       key={row.label}
                       className={
-                        i % 2 === 0 ? "bg-[#ebe0d4]/80" : "bg-white/70"
+                        i % 2 === 0 ? "bg-white/70" : "bg-[#ebe0d4]/80"
                       }
                     >
-                      <th className="py-2.5 px-3 text-left font-semibold text-[#5c4336] tracking-wider text-xs">
+                      <th
+                        className={`py-2.5 px-3 text-left font-semibold tracking-wider text-xs ${
+                          row.label === "VESTE"
+                            ? "bg-[#5c4336] text-white"
+                            : "text-[#5c4336]"
+                        }`}
+                      >
                         {row.label}
                       </th>
-                      <td className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]">
-                        {row.m}
-                      </td>
-                      <td className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]">
-                        {row.g}
-                      </td>
+                      {guide.columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]"
+                        >
+                          {row.values[col.key]}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

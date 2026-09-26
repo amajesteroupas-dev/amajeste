@@ -162,6 +162,8 @@ model Product {
   lengthCm             Float?
   widthCm              Float?
   heightCm             Float?
+  /// Guia de medidas na loja: mg (M e G) | pmg (P, M e G)
+  sizeGuide            String           @default("mg")
   /// Vídeo do produto (upload /uploads/videos/... ou URL YouTube/Vimeo)
   videoUrl             String?
   categoryId           String

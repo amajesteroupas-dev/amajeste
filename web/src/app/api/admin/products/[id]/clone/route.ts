@@ -68,6 +68,7 @@ export async function POST(req: NextRequest, { params }: Props) {
         interestFree: source.interestFree,
         pixDiscountPercent: source.pixDiscountPercent,
         showPaymentFlags: source.showPaymentFlags,
+        sizeGuide: source.sizeGuide,
         weightKg: source.weightKg,
         lengthCm: source.lengthCm,
         widthCm: source.widthCm,

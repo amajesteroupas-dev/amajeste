@@ -147,6 +147,9 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       ...(body.showPaymentFlags !== undefined
         ? { showPaymentFlags: Boolean(body.showPaymentFlags) }
         : {}),
+      ...(body.sizeGuide !== undefined
+        ? { sizeGuide: body.sizeGuide === "pmg" ? "pmg" : "mg" }
+        : {}),
       ...("weightKg" in dimOverrides
         ? { weightKg: dimOverrides.weightKg }
         : {}),

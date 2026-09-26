@@ -43,6 +43,7 @@ type Props = {
   selectedColor: string;
   onColorChange: (color: string) => void;
   sizeGuideImageUrl?: string | null;
+  sizeGuide?: string | null;
 };
 
 export function ProductPurchase({
@@ -50,6 +51,7 @@ export function ProductPurchase({
   selectedColor,
   onColorChange,
   sizeGuideImageUrl,
+  sizeGuide,
 }: Props) {
   const router = useRouter();
   const sitePromo = useSitePromo();
@@ -509,6 +511,7 @@ export function ProductPurchase({
         open={guideOpen}
         onClose={() => setGuideOpen(false)}
         imageUrl={sizeGuideImageUrl}
+        sizeGuide={sizeGuide}
       />
     </div>
   );

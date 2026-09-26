@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     interestFree = true,
     pixDiscountPercent = 5,
     showPaymentFlags = true,
+    sizeGuide = "mg",
     weightKg = null,
     lengthCm = null,
     widthCm = null,
@@ -154,6 +155,7 @@ export async function POST(req: NextRequest) {
         interestFree: Boolean(interestFree),
         pixDiscountPercent: Number(pixDiscountPercent) || 0,
         showPaymentFlags: showPaymentFlags !== false,
+        sizeGuide: sizeGuide === "pmg" ? "pmg" : "mg",
         weightKg:
           weightKg != null && Number(weightKg) > 0 ? Number(weightKg) : null,
         lengthCm:

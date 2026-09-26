@@ -13,6 +13,7 @@ import {
   evaluateProductReadiness,
   type ReadinessIssue,
 } from "@/lib/product-readiness";
+import { SIZE_GUIDES, normalizeSizeGuide } from "@/lib/size-guides";
 
 type Props = {
   product: {
@@ -34,6 +35,7 @@ type Props = {
     widthCm: number | null;
     heightCm: number | null;
     videoUrl: string | null;
+    sizeGuide?: string | null;
   };
   categories: { id: string; name: string; parentId?: string | null }[];
   variants: {
@@ -71,6 +73,9 @@ export function ProductEditForm({
   const [lengthCm, setLengthCm] = useState(product.lengthCm ?? 30);
   const [widthCm, setWidthCm] = useState(product.widthCm ?? 25);
   const [heightCm, setHeightCm] = useState(product.heightCm ?? 5);
+  const [sizeGuide, setSizeGuide] = useState(
+    normalizeSizeGuide(product.sizeGuide)
+  );
   const [newCat, setNewCat] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [library, setLibrary] = useState<MediaGalleryItem[]>([]);
@@ -159,6 +164,7 @@ export function ProductEditForm({
       lengthCm: Number(form.get("lengthCm") || 0) || null,
       widthCm: Number(form.get("widthCm") || 0) || null,
       heightCm: Number(form.get("heightCm") || 0) || null,
+      sizeGuide: normalizeSizeGuide(form.get("sizeGuide")),
     };
 
     if (payload.active) {
@@ -783,6 +789,29 @@ export function ProductEditForm({
                 defaultValue={product.description}
                 className="input mt-1 min-h-28"
               />
+            </label>
+
+            <label className="block text-xs uppercase tracking-wider text-muted md:col-span-2">
+              Guia de medidas
+              <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja. A tabela atual é M e G. A do novo fornecedor é P, M e G." />
+              <select
+                name="sizeGuide"
+                value={sizeGuide}
+                onChange={(e) =>
+                  setSizeGuide(normalizeSizeGuide(e.target.value))
+                }
+                className="input mt-1"
+              >
+                {SIZE_GUIDES.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.adminLabel}
+                  </option>
+                ))}
+              </select>
+              <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
+                Produtos já cadastrados continuam na tabela atual (M e G) até
+                você trocar aqui.
+              </span>
             </label>
 
             <div className="md:col-span-2 space-y-2">

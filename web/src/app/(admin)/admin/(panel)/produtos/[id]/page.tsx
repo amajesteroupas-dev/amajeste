@@ -86,6 +86,7 @@ export default async function EditProductPage({ params, searchParams }: Props) {
           widthCm: product.widthCm,
           heightCm: product.heightCm,
           videoUrl: product.videoUrl,
+          sizeGuide: product.sizeGuide,
         }}
         categories={categories.map((c) => ({
           id: c.id,

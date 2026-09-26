@@ -140,6 +140,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         initialColor={focusColor}
         descriptionBlocks={blocks}
         sizeGuideImageUrl={sizeGuideImageUrl}
+        sizeGuide={product.sizeGuide}
         product={{
           id: product.id,
           name: product.name,
