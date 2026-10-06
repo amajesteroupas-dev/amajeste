@@ -359,17 +359,22 @@ export async function saveVideoCutoutBankFile(
   };
 }
 
-/** Salva vídeo de produto/categoria (legado). */
+/** Limite do vídeo direto no produto (mesmo teto do banco). */
+export const PRODUCT_VIDEO_MAX_BYTES = VIDEO_BANK_MAX_BYTES;
+
+/** Salva vídeo de produto/categoria. */
 export async function saveProductVideoFile(
   file: Buffer,
   originalName: string,
   mime: string
 ) {
-  if (!isAllowedVideoMime(mime)) {
-    throw new Error("Formato inválido. Use MP4, WebM ou MOV.");
+  if (!isAllowedVideoMime(mime) && !/\.(mp4|webm|mov|m4v)$/i.test(originalName)) {
+    throw new Error("Formato inválido. Use MP4, WebM ou MOV (vídeos do iPhone ok).");
   }
-  if (file.length > 45 * 1024 * 1024) {
-    throw new Error("Vídeo muito grande (máx. 45 MB). Use o Banco de vídeos.");
+  if (file.length > PRODUCT_VIDEO_MAX_BYTES) {
+    throw new Error(
+      "Vídeo muito grande (máx. 120 MB). Comprima no iPhone ou envie pelo Banco de vídeos."
+    );
   }
 
   const id = randomUUID();

@@ -19,6 +19,11 @@ import {
   normalizeSizeGuide,
   type SizeGuideId,
 } from "@/lib/size-guides";
+import {
+  postBinaryFile,
+  readJsonSafe,
+  uploadHttpError,
+} from "@/lib/binary-upload";
 
 type Props = {
   product: {
@@ -598,23 +603,46 @@ export function ProductEditForm({
   async function uploadVideo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const data = new FormData(form);
-    setVideoBusy(true);
-    setVideoMsg("");
-    const res = await fetch(`/api/admin/products/${product.id}/video`, {
-      method: "POST",
-      body: data,
-    });
-    const json = await res.json().catch(() => ({}));
-    setVideoBusy(false);
-    if (!res.ok) {
-      setVideoMsg(json.error || "Erro ao enviar vídeo");
+    const input = form.elements.namedItem("file") as HTMLInputElement | null;
+    const file = input?.files?.[0] || null;
+    if (!file) {
+      setVideoMsg("Escolha um arquivo de vídeo.");
       return;
     }
-    setVideoUrl(json.videoUrl || "");
-    setVideoMsg("Vídeo enviado");
-    form.reset();
-    router.refresh();
+    const max = 120 * 1024 * 1024;
+    if (file.size > max) {
+      setVideoMsg(
+        "Vídeo muito grande (máx. 120 MB). No iPhone: edite e exporte em 1080p, ou use Admin → Vídeos."
+      );
+      return;
+    }
+    setVideoBusy(true);
+    setVideoMsg(
+      `Enviando ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MB)… pode levar alguns minutos para converter (MOV do iPhone → MP4)`
+    );
+    try {
+      const res = await postBinaryFile(
+        `/api/admin/products/${product.id}/video`,
+        file
+      );
+      const json = await readJsonSafe<{ error?: string; videoUrl?: string }>(
+        res
+      );
+      if (!res.ok) {
+        setVideoMsg(uploadHttpError(res, json, "Erro ao enviar vídeo"));
+        return;
+      }
+      setVideoUrl(json.videoUrl || "");
+      setVideoMsg("Vídeo enviado e convertido para celular (iPhone e Android).");
+      form.reset();
+      router.refresh();
+    } catch (err) {
+      setVideoMsg(
+        err instanceof Error ? err.message : "Erro ao enviar vídeo"
+      );
+    } finally {
+      setVideoBusy(false);
+    }
   }
 
   async function saveVideoUrl(e: FormEvent<HTMLFormElement>) {
@@ -1485,16 +1513,37 @@ export function ProductEditForm({
 
       <AdminCollapse
         title="Vídeo do produto"
-        defaultOpen={false}
+        defaultOpen={Boolean(videoUrl)}
         summary={videoUrl ? "Com vídeo" : "Sem vídeo"}
       >
-        <p className="text-sm text-muted">
-          Prefira vários vídeos por categoria em{" "}
-          <a href="/admin/videos" className="underline">
-            Admin → Vídeos
-          </a>
-          . Aqui define um vídeo só deste produto.
-        </p>
+        <div className="space-y-2 text-sm text-muted border border-black/10 bg-[#faf7f3] p-3">
+          <p className="font-medium text-[#2a2420]">Como usar (iPhone)</p>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li>
+              Grave ou escolha o vídeo no iPhone (MOV/MP4, até 120 MB).
+            </li>
+            <li>
+              Aqui em <strong>Enviar vídeo</strong> — o servidor converte sozinho
+              para MP4 (funciona no iPhone e no Android).
+            </li>
+            <li>
+              Espere a mensagem de sucesso (pode demorar 1–3 min em vídeos
+              longos). Não feche a página.
+            </li>
+            <li>
+              Alternativa: envie em{" "}
+              <a href="/admin/videos" className="underline">
+                Admin → Vídeos
+              </a>
+              , copie o link <code className="text-xs">/uploads/…</code> e cole
+              abaixo em “Ou cole o link”.
+            </li>
+          </ol>
+          <p className="text-xs">
+            Dica: em Ajustes → Câmera → Formatos, use “Mais compatíveis” se o
+            envio falhar. Evite vídeos de vários minutos em 4K.
+          </p>
+        </div>
 
         {videoUrl ? (
           <div className="flex flex-wrap items-start gap-4">
@@ -1504,6 +1553,7 @@ export function ProductEditForm({
                 <video
                   src={videoUrl}
                   controls
+                  playsInline
                   className="h-full w-full object-contain"
                 />
               ) : (
@@ -1533,8 +1583,9 @@ export function ProductEditForm({
           <input
             type="file"
             name="file"
-            accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+            accept="video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov,.m4v"
             required
+            disabled={videoBusy}
           />
           <button type="submit" className="btn btn-outline" disabled={videoBusy}>
             {videoBusy ? "Enviando…" : "Enviar vídeo"}
@@ -1550,11 +1601,12 @@ export function ProductEditForm({
               Ou cole o link
             </span>
             <input
-              type="url"
+              type="text"
               className="input w-full"
-              placeholder="https://youtu.be/… ou /uploads/videos/…"
+              placeholder="https://youtu.be/… ou /uploads/video-bank/…"
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
+              disabled={videoBusy}
             />
           </label>
           <button type="submit" className="btn btn-primary" disabled={videoBusy}>
@@ -1562,7 +1614,15 @@ export function ProductEditForm({
           </button>
         </form>
         {videoMsg ? (
-          <p className="text-sm text-emerald-800">{videoMsg}</p>
+          <p
+            className={`text-sm ${
+              /erro|falha|inválid|grande|vazio|obrigat/i.test(videoMsg)
+                ? "text-red-800"
+                : "text-emerald-800"
+            }`}
+          >
+            {videoMsg}
+          </p>
         ) : null}
       </AdminCollapse>
     </div>
