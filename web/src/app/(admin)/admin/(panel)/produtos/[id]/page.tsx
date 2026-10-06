@@ -4,6 +4,7 @@ import { formatBRL } from "@/lib/utils";
 import { ProductEditForm } from "@/components/admin/ProductEditForm";
 import { DeleteProductButton, CloneProductButton } from "@/components/admin/DeleteProductButton";
 import { HOME_VIDEO_CATEGORY_SLUG } from "@/lib/category-videos";
+import { getSizeGuideLabels } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,13 @@ export default async function EditProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
   if (product.deletedAt) redirect("/admin/produtos/lixeira");
 
-  const categories = await prisma.category.findMany({
-    where: { slug: { not: HOME_VIDEO_CATEGORY_SLUG } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  });
+  const [categories, sizeGuideLabels] = await Promise.all([
+    prisma.category.findMany({
+      where: { slug: { not: HOME_VIDEO_CATEGORY_SLUG } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    getSizeGuideLabels(),
+  ]);
 
   return (
     <div>
@@ -103,6 +107,7 @@ export default async function EditProductPage({ params, searchParams }: Props) {
           active: v.active,
         }))}
         images={product.images}
+        sizeGuideLabels={sizeGuideLabels}
       />
     </div>
   );

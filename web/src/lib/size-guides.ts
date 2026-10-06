@@ -1,4 +1,4 @@
-export type SizeGuideId = "mg" | "pmg" | "casaco";
+export type SizeGuideId = "mg" | "pmg" | "casaco" | "top";
 
 export type SizeGuideColumn = {
   key: string;
@@ -136,7 +136,40 @@ const CASACO: SizeGuide = {
   note: "Tecido com elastano e modelagem acinturada.",
 };
 
-export const SIZE_GUIDES: SizeGuide[] = [MG, PMG, CASACO];
+const TOP: SizeGuide = {
+  id: "top",
+  adminLabel: "Top — P, M e G (busto, manga, comprimento)",
+  columns: [
+    { key: "p", label: "P" },
+    { key: "m", label: "M" },
+    { key: "g", label: "G" },
+  ],
+  rows: [
+    {
+      label: "BUSTO",
+      values: { p: "81 CM", m: "88 CM", g: "93 CM" },
+    },
+    {
+      label: "MANGA",
+      values: { p: "19 CM", m: "20 CM", g: "21 CM" },
+    },
+    {
+      label: "COMPRIMENTO",
+      values: { p: "54 CM", m: "56 CM", g: "57 CM" },
+    },
+  ],
+  imageUrl: "/brand/size-guide-top.png",
+  markers: [
+    { label: "MANGA", top: "22%" },
+    { label: "BUSTO", top: "42%" },
+    { label: "COMPRIMENTO", top: "78%" },
+  ],
+  modelTitle: "Referência da modelo",
+  modelLines: ["A modelo veste M."],
+  note: "Tamanho único, veste do P ao G.",
+};
+
+export const SIZE_GUIDES: SizeGuide[] = [MG, PMG, CASACO, TOP];
 
 const SIZE_GUIDE_IDS = new Set<string>(SIZE_GUIDES.map((g) => g.id));
 
@@ -149,4 +182,20 @@ export function normalizeSizeGuide(value: unknown): SizeGuideId {
 export function getSizeGuide(value: unknown): SizeGuide {
   const id = normalizeSizeGuide(value);
   return SIZE_GUIDES.find((g) => g.id === id) || MG;
+}
+
+export type SizeGuideLabelMap = Partial<Record<SizeGuideId, string>>;
+
+export function defaultSizeGuideLabels(): Record<SizeGuideId, string> {
+  return Object.fromEntries(
+    SIZE_GUIDES.map((g) => [g.id, g.adminLabel])
+  ) as Record<SizeGuideId, string>;
+}
+
+export function resolveSizeGuideLabel(
+  guide: SizeGuide,
+  labels?: SizeGuideLabelMap | null
+): string {
+  const custom = labels?.[guide.id]?.trim();
+  return custom || guide.adminLabel;
 }

@@ -13,7 +13,12 @@ import {
   evaluateProductReadiness,
   type ReadinessIssue,
 } from "@/lib/product-readiness";
-import { SIZE_GUIDES, normalizeSizeGuide } from "@/lib/size-guides";
+import {
+  SIZE_GUIDES,
+  defaultSizeGuideLabels,
+  normalizeSizeGuide,
+  type SizeGuideId,
+} from "@/lib/size-guides";
 
 type Props = {
   product: {
@@ -48,6 +53,7 @@ type Props = {
     active: boolean;
   }[];
   images: { id: string; url: string; alt: string | null }[];
+  sizeGuideLabels?: Record<SizeGuideId, string>;
 };
 
 export function ProductEditForm({
@@ -55,6 +61,7 @@ export function ProductEditForm({
   categories: initialCategories,
   variants,
   images,
+  sizeGuideLabels: initialLabels,
 }: Props) {
   const router = useRouter();
   const [msg, setMsg] = useState("");
@@ -76,6 +83,15 @@ export function ProductEditForm({
   const [sizeGuide, setSizeGuide] = useState(
     normalizeSizeGuide(product.sizeGuide)
   );
+  const [guideLabels, setGuideLabels] = useState<Record<SizeGuideId, string>>(
+    () => ({ ...defaultSizeGuideLabels(), ...(initialLabels || {}) })
+  );
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState<Record<SizeGuideId, string>>(
+    () => ({ ...defaultSizeGuideLabels(), ...(initialLabels || {}) })
+  );
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [renameMsg, setRenameMsg] = useState("");
   const [newCat, setNewCat] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [library, setLibrary] = useState<MediaGalleryItem[]>([]);
@@ -791,28 +807,125 @@ export function ProductEditForm({
               />
             </label>
 
-            <label className="block text-xs uppercase tracking-wider text-muted md:col-span-2">
-              Guia de medidas
-              <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja: M/G, P/M/G do novo fornecedor, ou Casaco (P/M/G com comprimento)." />
-              <select
-                name="sizeGuide"
-                value={sizeGuide}
-                onChange={(e) =>
-                  setSizeGuide(normalizeSizeGuide(e.target.value))
-                }
-                className="input mt-1"
-              >
-                {SIZE_GUIDES.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.adminLabel}
-                  </option>
-                ))}
-              </select>
+            <div className="block text-xs uppercase tracking-wider text-muted md:col-span-2">
+              <label className="block">
+                Guia de medidas
+                <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja. Você pode renomear os nomes das tabelas abaixo." />
+                <select
+                  name="sizeGuide"
+                  value={sizeGuide}
+                  onChange={(e) =>
+                    setSizeGuide(normalizeSizeGuide(e.target.value))
+                  }
+                  className="input mt-1"
+                >
+                  {SIZE_GUIDES.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {guideLabels[g.id] || g.adminLabel}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
                 Produtos já cadastrados continuam na tabela atual (M e G) até
                 você trocar aqui.
               </span>
-            </label>
+              <button
+                type="button"
+                className="mt-2 text-[11px] normal-case tracking-normal underline text-[#5c4336] hover:text-[#2a2420]"
+                onClick={() => {
+                  setRenameOpen((v) => !v);
+                  setRenameDraft({ ...guideLabels });
+                  setRenameMsg("");
+                }}
+              >
+                {renameOpen
+                  ? "Fechar renomear tabelas"
+                  : "Renomear nomes das tabelas"}
+              </button>
+              {renameOpen ? (
+                <div className="mt-3 space-y-2 border border-black/10 bg-[#faf7f3] p-3 normal-case tracking-normal">
+                  <p className="text-[11px] text-muted">
+                    Os nomes aparecem só no admin (neste seletor). Vale para
+                    todos os produtos.
+                  </p>
+                  {SIZE_GUIDES.map((g) => (
+                    <label
+                      key={g.id}
+                      className="block text-[11px] text-[#5c4336]"
+                    >
+                      {g.id}
+                      <input
+                        type="text"
+                        value={renameDraft[g.id] || ""}
+                        maxLength={80}
+                        onChange={(e) =>
+                          setRenameDraft((prev) => ({
+                            ...prev,
+                            [g.id]: e.target.value,
+                          }))
+                        }
+                        className="input mt-1 text-sm"
+                        placeholder={g.adminLabel}
+                      />
+                    </label>
+                  ))}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      className="btn btn-primary text-xs"
+                      disabled={renameBusy}
+                      onClick={async () => {
+                        setRenameBusy(true);
+                        setRenameMsg("");
+                        try {
+                          const res = await fetch(
+                            "/api/admin/settings/size-guide-labels",
+                            {
+                              method: "PUT",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({ labels: renameDraft }),
+                            }
+                          );
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            setRenameMsg(
+                              data.error || "Falha ao salvar nomes."
+                            );
+                            return;
+                          }
+                          setGuideLabels(data.labels);
+                          setRenameDraft(data.labels);
+                          setRenameMsg("Nomes das tabelas atualizados.");
+                        } finally {
+                          setRenameBusy(false);
+                        }
+                      }}
+                    >
+                      {renameBusy ? "Salvando…" : "Salvar nomes"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs underline text-muted"
+                      disabled={renameBusy}
+                      onClick={() => {
+                        const defaults = defaultSizeGuideLabels();
+                        setRenameDraft(defaults);
+                      }}
+                    >
+                      Restaurar padrões
+                    </button>
+                    {renameMsg ? (
+                      <span className="text-[11px] text-[#5c4336]">
+                        {renameMsg}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <div className="md:col-span-2 space-y-2">
               <p className="text-xs uppercase tracking-wider text-muted">
