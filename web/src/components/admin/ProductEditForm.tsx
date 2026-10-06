@@ -793,7 +793,7 @@ export function ProductEditForm({
 
             <label className="block text-xs uppercase tracking-wider text-muted md:col-span-2">
               Guia de medidas
-              <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja. A tabela atual é M e G. A do novo fornecedor é P, M e G." />
+              <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja: M/G, P/M/G do novo fornecedor, ou Casaco (P/M/G com comprimento)." />
               <select
                 name="sizeGuide"
                 value={sizeGuide}

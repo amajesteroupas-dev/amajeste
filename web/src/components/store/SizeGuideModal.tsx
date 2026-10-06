@@ -2,38 +2,47 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
-import { getSizeGuide, type SizeGuideId } from "@/lib/size-guides";
+import {
+  getSizeGuide,
+  type SizeGuideId,
+  type SizeGuideMarker,
+} from "@/lib/size-guides";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Foto do banco de imagens (recortada) */
+  /** Foto global da loja (usada se a guia não tiver foto própria). */
   imageUrl?: string | null;
-  /** Qual tabela mostrar: mg (atual) ou pmg (novo fornecedor). */
+  /** Qual tabela mostrar no produto. */
   sizeGuide?: SizeGuideId | string | null;
 };
 
-const MARKERS = [
+const FALLBACK_MARKERS: SizeGuideMarker[] = [
   { label: "BUSTO", top: "29%" },
   { label: "CINTURA", top: "41%" },
   { label: "QUADRIL", top: "51%" },
-] as const;
+];
 
-function MeasurePhoto({ src }: { src: string }) {
+function MeasurePhoto({
+  src,
+  markers,
+}: {
+  src: string;
+  markers: SizeGuideMarker[];
+}) {
   return (
     <div className="relative mx-auto w-full max-w-[240px] aspect-[9/16]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt="Como medir busto, cintura e quadril"
+        alt="Como medir a peça"
         className="absolute inset-0 h-full w-full object-contain object-bottom drop-shadow-[0_12px_24px_rgba(42,36,32,0.18)]"
       />
-      {/* Linha vertical central */}
       <div
         className="pointer-events-none absolute left-1/2 top-[12%] bottom-[8%] w-px -translate-x-1/2 border-l border-dashed border-white/90"
         aria-hidden
       />
-      {MARKERS.map((m) => (
+      {markers.map((m) => (
         <div
           key={m.label}
           className="pointer-events-none absolute left-0 right-0 flex items-center"
@@ -59,6 +68,9 @@ export function SizeGuideModal({
   sizeGuide,
 }: Props) {
   const guide = getSizeGuide(sizeGuide);
+  const photo = guide.imageUrl || imageUrl || null;
+  const markers = guide.markers?.length ? guide.markers : FALLBACK_MARKERS;
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -106,8 +118,8 @@ export function SizeGuideModal({
 
         <div className="grid md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] gap-6 md:gap-8 p-5 md:p-8 items-center">
           <div className="flex justify-center">
-            {imageUrl ? (
-              <MeasurePhoto src={imageUrl} />
+            {photo ? (
+              <MeasurePhoto src={photo} markers={markers} />
             ) : (
               <p className="text-sm text-[#6b5f56]">Foto do guia indisponível.</p>
             )}
@@ -174,14 +186,17 @@ export function SizeGuideModal({
             </div>
 
             <div className="mt-5 text-xs sm:text-sm text-[#5a4a42] leading-relaxed border-t border-[#e0d4c8] pt-4 max-w-md">
-              <p className="font-medium text-[#3d2f28]">Referência da modelo</p>
-              <p className="mt-2">A modelo veste 36/38.</p>
-              <p className="mt-1">Medidas aproximadas:</p>
-              <ul className="mt-1 space-y-0.5 list-none">
-                <li>Busto 88&nbsp;cm</li>
-                <li>Cintura 73&nbsp;cm</li>
-                <li>Quadril 96&nbsp;cm</li>
-              </ul>
+              <p className="font-medium text-[#3d2f28]">
+                {guide.modelTitle || "Referência da modelo"}
+              </p>
+              {(guide.modelLines || []).map((line) => (
+                <p key={line} className="mt-1">
+                  {line}
+                </p>
+              ))}
+              {guide.note ? (
+                <p className="mt-3 text-[#3d2f28]">{guide.note}</p>
+              ) : null}
             </div>
           </div>
         </div>

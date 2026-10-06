@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeSizeGuide } from "@/lib/size-guides";
 import { slugify } from "@/lib/utils";
 import { colorToHex, normalizeColor } from "@/lib/colors";
 import {
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
         interestFree: Boolean(interestFree),
         pixDiscountPercent: Number(pixDiscountPercent) || 0,
         showPaymentFlags: showPaymentFlags !== false,
-        sizeGuide: sizeGuide === "pmg" ? "pmg" : "mg",
+        sizeGuide: normalizeSizeGuide(sizeGuide),
         weightKg:
           weightKg != null && Number(weightKg) > 0 ? Number(weightKg) : null,
         lengthCm:

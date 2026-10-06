@@ -1,4 +1,4 @@
-export type SizeGuideId = "mg" | "pmg";
+export type SizeGuideId = "mg" | "pmg" | "casaco";
 
 export type SizeGuideColumn = {
   key: string;
@@ -10,11 +10,39 @@ export type SizeGuideRow = {
   values: Record<string, string>;
 };
 
+export type SizeGuideMarker = {
+  label: string;
+  top: string;
+};
+
 export type SizeGuide = {
   id: SizeGuideId;
   adminLabel: string;
   columns: SizeGuideColumn[];
   rows: SizeGuideRow[];
+  /** Foto própria da guia (senão usa a foto global da loja). */
+  imageUrl?: string;
+  markers?: SizeGuideMarker[];
+  modelTitle?: string;
+  modelLines?: string[];
+  note?: string;
+};
+
+const DEFAULT_MARKERS: SizeGuideMarker[] = [
+  { label: "BUSTO", top: "29%" },
+  { label: "CINTURA", top: "41%" },
+  { label: "QUADRIL", top: "51%" },
+];
+
+const DEFAULT_MODEL = {
+  modelTitle: "Referência da modelo",
+  modelLines: [
+    "A modelo veste 36/38.",
+    "Medidas aproximadas:",
+    "Busto 88 cm",
+    "Cintura 73 cm",
+    "Quadril 96 cm",
+  ],
 };
 
 const MG: SizeGuide = {
@@ -30,6 +58,8 @@ const MG: SizeGuide = {
     { label: "CINTURA", values: { m: "68 - 80 CM", g: "81 - 94 CM" } },
     { label: "QUADRIL", values: { m: "90 - 105 CM", g: "105 - 122 CM" } },
   ],
+  markers: DEFAULT_MARKERS,
+  ...DEFAULT_MODEL,
 };
 
 const PMG: SizeGuide = {
@@ -58,12 +88,62 @@ const PMG: SizeGuide = {
       values: { p: "90 - 105 CM", m: "105 - 122 CM", g: "106 - 126 CM" },
     },
   ],
+  markers: DEFAULT_MARKERS,
+  ...DEFAULT_MODEL,
 };
 
-export const SIZE_GUIDES: SizeGuide[] = [MG, PMG];
+const CASACO: SizeGuide = {
+  id: "casaco",
+  adminLabel: "Casaco — P, M e G (com comprimento)",
+  columns: [
+    { key: "p", label: "P" },
+    { key: "m", label: "M" },
+    { key: "g", label: "G" },
+  ],
+  rows: [
+    {
+      label: "VESTE",
+      values: { p: "36", m: "38 / 40", g: "42 / 44" },
+    },
+    {
+      label: "BUSTO",
+      values: { p: "84 – 88 CM", m: "88 – 94 CM", g: "94 – 100 CM" },
+    },
+    {
+      label: "CINTURA",
+      values: { p: "68 – 72 CM", m: "72 – 78 CM", g: "78 – 84 CM" },
+    },
+    {
+      label: "QUADRIL",
+      values: { p: "58 CM", m: "60 CM", g: "62 CM" },
+    },
+    {
+      label: "COMPRIMENTO",
+      values: { p: "60 CM", m: "61 CM", g: "62 CM" },
+    },
+  ],
+  imageUrl: "/brand/size-guide-casaco.png",
+  markers: [
+    { label: "BUSTO", top: "34%" },
+    { label: "CINTURA", top: "48%" },
+    { label: "COMPRIMENTO", top: "72%" },
+  ],
+  modelTitle: "Referência da modelo",
+  modelLines: [
+    "A modelo veste P e M.",
+    "Altura 1,59 m · 62 kg.",
+  ],
+  note: "Tecido com elastano e modelagem acinturada.",
+};
+
+export const SIZE_GUIDES: SizeGuide[] = [MG, PMG, CASACO];
+
+const SIZE_GUIDE_IDS = new Set<string>(SIZE_GUIDES.map((g) => g.id));
 
 export function normalizeSizeGuide(value: unknown): SizeGuideId {
-  return value === "pmg" ? "pmg" : "mg";
+  const raw = String(value || "").trim().toLowerCase();
+  if (SIZE_GUIDE_IDS.has(raw)) return raw as SizeGuideId;
+  return "mg";
 }
 
 export function getSizeGuide(value: unknown): SizeGuide {

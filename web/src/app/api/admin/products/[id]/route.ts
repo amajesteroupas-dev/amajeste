@@ -10,6 +10,7 @@ import {
   getProductReadiness,
   readinessErrorPayload,
 } from "@/lib/product-readiness";
+import { normalizeSizeGuide } from "@/lib/size-guides";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -148,7 +149,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         ? { showPaymentFlags: Boolean(body.showPaymentFlags) }
         : {}),
       ...(body.sizeGuide !== undefined
-        ? { sizeGuide: body.sizeGuide === "pmg" ? "pmg" : "mg" }
+        ? { sizeGuide: normalizeSizeGuide(body.sizeGuide) }
         : {}),
       ...("weightKg" in dimOverrides
         ? { weightKg: dimOverrides.weightKg }
