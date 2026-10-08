@@ -73,6 +73,7 @@ export function SizeGuideModal({
 }: Props) {
   const guide = guideData || getSizeGuide(sizeGuide);
   const photo = guide.imageUrl || imageUrl || null;
+  const photoOnly = Boolean(guide.photoOnly && guide.imageUrl);
   const markers = guide.markers?.length ? guide.markers : FALLBACK_MARKERS;
 
   useEffect(() => {
@@ -100,7 +101,9 @@ export function SizeGuideModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl max-h-[92vh] overflow-auto bg-[#f3ebe3] shadow-2xl"
+        className={`relative w-full max-h-[92vh] overflow-auto bg-[#f3ebe3] shadow-2xl ${
+          photoOnly ? "max-w-2xl" : "max-w-3xl"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 md:px-5 bg-[#f3ebe3]/90 backdrop-blur-sm border-b border-[#e0d4c8]">
@@ -120,90 +123,118 @@ export function SizeGuideModal({
           </button>
         </div>
 
-        <div className="grid md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] gap-6 md:gap-8 p-5 md:p-8 items-center">
-          <div className="flex justify-center">
-            {photo ? (
-              <MeasurePhoto src={photo} markers={markers} />
-            ) : (
-              <p className="text-sm text-[#6b5f56]">Foto do guia indisponível.</p>
+        {photoOnly && photo ? (
+          <div className="p-4 md:p-6 space-y-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo}
+              alt="Tabela de medidas"
+              className="mx-auto w-full max-w-xl object-contain"
+            />
+            {(guide.modelLines?.length || guide.note) && (
+              <div className="text-xs sm:text-sm text-[#5a4a42] leading-relaxed border-t border-[#e0d4c8] pt-4 max-w-xl mx-auto">
+                {guide.modelTitle ? (
+                  <p className="font-medium text-[#3d2f28]">{guide.modelTitle}</p>
+                ) : null}
+                {(guide.modelLines || []).map((line) => (
+                  <p key={line} className="mt-1">
+                    {line}
+                  </p>
+                ))}
+                {guide.note ? (
+                  <p className="mt-3 text-[#3d2f28]">{guide.note}</p>
+                ) : null}
+              </div>
             )}
           </div>
+        ) : (
+          <div className="grid md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] gap-6 md:gap-8 p-5 md:p-8 items-center">
+            <div className="flex justify-center">
+              {photo ? (
+                <MeasurePhoto src={photo} markers={markers} />
+              ) : (
+                <p className="text-sm text-[#6b5f56]">
+                  Foto do guia indisponível.
+                </p>
+              )}
+            </div>
 
-          <div>
-            <h3
-              className="text-2xl md:text-3xl tracking-wide text-[#5c4336] uppercase"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Tabela de medidas
-            </h3>
-            <p className="mt-2 text-sm text-[#5a4a42] leading-relaxed max-w-md">
-              Use a fita métrica para descobrir suas medidas e saber qual o
-              tamanho ideal para você.
-            </p>
+            <div>
+              <h3
+                className="text-2xl md:text-3xl tracking-wide text-[#5c4336] uppercase"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Tabela de medidas
+              </h3>
+              <p className="mt-2 text-sm text-[#5a4a42] leading-relaxed max-w-md">
+                Use a fita métrica para descobrir suas medidas e saber qual o
+                tamanho ideal para você.
+              </p>
 
-            <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[280px] text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="py-2.5 px-3" aria-hidden>
-                      &nbsp;
-                    </th>
-                    {guide.columns.map((col) => (
-                      <th
-                        key={col.key}
-                        className="py-2.5 px-3 text-center font-semibold tracking-wider bg-[#5c4336] text-white"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {guide.rows.map((row, i) => (
-                    <tr
-                      key={row.label}
-                      className={
-                        i % 2 === 0 ? "bg-white/70" : "bg-[#ebe0d4]/80"
-                      }
-                    >
-                      <th
-                        className={`py-2.5 px-3 text-left font-semibold tracking-wider text-xs ${
-                          row.label === "VESTE"
-                            ? "bg-[#5c4336] text-white"
-                            : "text-[#5c4336]"
-                        }`}
-                      >
-                        {row.label}
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full min-w-[280px] text-sm border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="py-2.5 px-3" aria-hidden>
+                        &nbsp;
                       </th>
                       {guide.columns.map((col) => (
-                        <td
+                        <th
                           key={col.key}
-                          className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]"
+                          className="py-2.5 px-3 text-center font-semibold tracking-wider bg-[#5c4336] text-white"
                         >
-                          {row.values[col.key]}
-                        </td>
+                          {col.label}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {guide.rows.map((row, i) => (
+                      <tr
+                        key={row.label}
+                        className={
+                          i % 2 === 0 ? "bg-white/70" : "bg-[#ebe0d4]/80"
+                        }
+                      >
+                        <th
+                          className={`py-2.5 px-3 text-left font-semibold tracking-wider text-xs ${
+                            row.label === "VESTE"
+                              ? "bg-[#5c4336] text-white"
+                              : "text-[#5c4336]"
+                          }`}
+                        >
+                          {row.label}
+                        </th>
+                        {guide.columns.map((col) => (
+                          <td
+                            key={col.key}
+                            className="py-2.5 px-3 text-center text-[#3d2f28] border border-[#e8ddd2]"
+                          >
+                            {row.values[col.key]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            <div className="mt-5 text-xs sm:text-sm text-[#5a4a42] leading-relaxed border-t border-[#e0d4c8] pt-4 max-w-md">
-              <p className="font-medium text-[#3d2f28]">
-                {guide.modelTitle || "Referência da modelo"}
-              </p>
-              {(guide.modelLines || []).map((line) => (
-                <p key={line} className="mt-1">
-                  {line}
+              <div className="mt-5 text-xs sm:text-sm text-[#5a4a42] leading-relaxed border-t border-[#e0d4c8] pt-4 max-w-md">
+                <p className="font-medium text-[#3d2f28]">
+                  {guide.modelTitle || "Referência da modelo"}
                 </p>
-              ))}
-              {guide.note ? (
-                <p className="mt-3 text-[#3d2f28]">{guide.note}</p>
-              ) : null}
+                {(guide.modelLines || []).map((line) => (
+                  <p key={line} className="mt-1">
+                    {line}
+                  </p>
+                ))}
+                {guide.note ? (
+                  <p className="mt-3 text-[#3d2f28]">{guide.note}</p>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

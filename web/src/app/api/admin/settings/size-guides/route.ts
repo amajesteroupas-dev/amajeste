@@ -5,6 +5,7 @@ import {
   saveSizeGuidesCatalog,
 } from "@/lib/site-settings";
 import {
+  emptyPhotoOnlySizeGuideDraft,
   emptySizeGuideDraft,
   sanitizeSizeGuide,
   type SizeGuide,
@@ -48,6 +49,17 @@ export async function PUT(req: NextRequest) {
       { status: 400 }
     );
   }
+  const missingPhoto = (body.guides as SizeGuide[]).find(
+    (g) => g?.photoOnly && !String(g?.imageUrl || "").trim()
+  );
+  if (missingPhoto) {
+    return NextResponse.json(
+      {
+        error: `A tabela “${missingPhoto.adminLabel || missingPhoto.id}” é só foto — envie a imagem antes de salvar.`,
+      },
+      { status: 400 }
+    );
+  }
   const guides = await saveSizeGuidesCatalog(body.guides);
   return NextResponse.json({ ok: true, guides });
 }
@@ -65,11 +77,15 @@ export async function POST(req: NextRequest) {
   const current = await getSizeGuidesCatalog();
 
   if (action === "add") {
-    const draft = emptySizeGuideDraft(current.map((g) => g.id));
+    const photoOnly = Boolean(body.photoOnly);
+    const draft = photoOnly
+      ? emptyPhotoOnlySizeGuideDraft(current.map((g) => g.id))
+      : emptySizeGuideDraft(current.map((g) => g.id));
     const incoming = body.guide
-      ? sanitizeSizeGuide(body.guide, {
-          existingIds: current.map((g) => g.id),
-        })
+      ? sanitizeSizeGuide(
+          { ...body.guide, photoOnly: body.guide.photoOnly ?? photoOnly },
+          { existingIds: current.map((g) => g.id) }
+        )
       : draft;
     if (!incoming) {
       return NextResponse.json(

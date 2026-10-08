@@ -22,6 +22,11 @@ export type SizeGuide = {
   rows: SizeGuideRow[];
   /** Foto própria da guia (senão usa a foto global da loja). */
   imageUrl?: string;
+  /**
+   * Quando true, a loja mostra só a foto da tabela (já pronta),
+   * sem grade editável nem linhas de medida.
+   */
+  photoOnly?: boolean;
   markers?: SizeGuideMarker[];
   modelTitle?: string;
   modelLines?: string[];
@@ -293,14 +298,22 @@ export function sanitizeSizeGuide(
   const imageUrl = cleanText(g.imageUrl, 300) || undefined;
   const modelTitle = cleanText(g.modelTitle, 80) || undefined;
   const note = cleanText(g.note, 200) || undefined;
+  const photoOnly = Boolean(g.photoOnly);
 
   return {
     id: finalId,
     adminLabel,
-    columns,
-    rows,
+    columns: photoOnly ? [{ key: "foto", label: "FOTO" }] : columns,
+    rows: photoOnly
+      ? [{ label: "TABELA", values: { foto: "VER FOTO" } }]
+      : rows,
     ...(imageUrl ? { imageUrl } : {}),
-    ...(markers?.length ? { markers } : {}),
+    ...(photoOnly ? { photoOnly: true } : {}),
+    ...(photoOnly
+      ? {}
+      : markers?.length
+        ? { markers }
+        : {}),
     ...(modelTitle ? { modelTitle } : {}),
     ...(modelLines?.length ? { modelLines } : {}),
     ...(note ? { note } : {}),
@@ -390,5 +403,21 @@ export function emptySizeGuideDraft(existingIds: Iterable<string>): SizeGuide {
     markers: DEFAULT_MARKERS,
     modelTitle: "Referência da modelo",
     modelLines: ["A modelo veste M."],
+  };
+}
+
+/** Tabela só com foto pronta (sem grade digitável). */
+export function emptyPhotoOnlySizeGuideDraft(
+  existingIds: Iterable<string>
+): SizeGuide {
+  const id = uniqueSizeGuideId("tabela-foto", existingIds);
+  return {
+    id,
+    adminLabel: "Tabela em foto",
+    columns: [{ key: "foto", label: "FOTO" }],
+    rows: [{ label: "TABELA", values: { foto: "VER FOTO" } }],
+    photoOnly: true,
+    modelTitle: "Referência da modelo",
+    modelLines: [],
   };
 }

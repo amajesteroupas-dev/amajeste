@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   emptySizeGuideDraft,
   type SizeGuide,
   type SizeGuideColumn,
   type SizeGuideRow,
 } from "@/lib/size-guides";
+import { uploadAdminMediaFile } from "@/lib/media-upload-client";
 
 type Props = {
   initialGuides: SizeGuide[];
@@ -32,7 +33,9 @@ export function SizeGuidesManager({
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const editing = useMemo(
     () => guides.find((g) => g.id === editingId) || null,
@@ -66,14 +69,14 @@ export function SizeGuidesManager({
     }
   }
 
-  async function addGuide() {
+  async function addGuide(photoOnly = false) {
     setBusy(true);
     setMsg("");
     try {
       const res = await fetch("/api/admin/settings/size-guides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add" }),
+        body: JSON.stringify({ action: "add", photoOnly }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -83,7 +86,11 @@ export function SizeGuidesManager({
       const list = data.guides as SizeGuide[];
       commitLocal(list);
       setEditingId(data.createdId || list[list.length - 1]?.id || null);
-      setMsg("Nova tabela criada. Preencha as medidas e salve.");
+      setMsg(
+        photoOnly
+          ? "Tabela só-foto criada. Envie a imagem e salve."
+          : "Nova tabela criada. Preencha as medidas e salve."
+      );
     } finally {
       setBusy(false);
     }
@@ -131,8 +138,28 @@ export function SizeGuidesManager({
     );
   }
 
+  async function uploadPhoto(file: File | null) {
+    if (!file || !editing) return;
+    setUploadBusy(true);
+    setMsg("");
+    try {
+      const asset = await uploadAdminMediaFile({
+        file,
+        mode: "upload",
+        alt: editing.adminLabel || "Tabela de medidas",
+      });
+      updateEditing({ imageUrl: asset.url });
+      setMsg("Foto enviada. Clique em salvar para gravar a tabela.");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Falha no upload da foto.");
+    } finally {
+      setUploadBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   function setColumnsFromLabels(text: string) {
-    if (!editing) return;
+    if (!editing || editing.photoOnly) return;
     const labels = text
       .split(/[,;/|]+/)
       .map((s) => s.trim())
@@ -159,7 +186,7 @@ export function SizeGuidesManager({
   }
 
   function setRowLabel(index: number, label: string) {
-    if (!editing) return;
+    if (!editing || editing.photoOnly) return;
     const rows = editing.rows.map((r, i) =>
       i === index ? { ...r, label: label.toUpperCase() } : r
     );
@@ -167,7 +194,7 @@ export function SizeGuidesManager({
   }
 
   function setCell(rowIndex: number, colKey: string, value: string) {
-    if (!editing) return;
+    if (!editing || editing.photoOnly) return;
     const rows = editing.rows.map((r, i) =>
       i === rowIndex
         ? { ...r, values: { ...r.values, [colKey]: value.toUpperCase() } }
@@ -177,7 +204,7 @@ export function SizeGuidesManager({
   }
 
   function addRow() {
-    if (!editing) return;
+    if (!editing || editing.photoOnly) return;
     updateEditing({
       rows: [
         ...editing.rows,
@@ -187,7 +214,7 @@ export function SizeGuidesManager({
   }
 
   function removeRow(index: number) {
-    if (!editing || editing.rows.length <= 1) return;
+    if (!editing || editing.photoOnly || editing.rows.length <= 1) return;
     updateEditing({ rows: editing.rows.filter((_, i) => i !== index) });
   }
 
@@ -206,13 +233,13 @@ export function SizeGuidesManager({
             Tabelas de medidas
           </h2>
           <p className="text-sm text-[#6b5f56] mt-1">
-            Crie, edite ou remova tabelas. Depois escolha qual usar em cada
-            produto.
+            Crie tabelas digitáveis ou envie uma foto pronta. Depois escolha
+            qual usar em cada produto.
           </p>
         </div>
       ) : (
         <p className="text-[11px] text-muted">
-          Adicione ou remova tabelas abaixo. As mudanças valem para todos os
+          Adicione, remova ou envie só a foto da tabela. Vale para todos os
           produtos.
         </p>
       )}
@@ -227,13 +254,23 @@ export function SizeGuidesManager({
                 : "border-black/10 bg-white"
             }`}
           >
+            {g.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={g.imageUrl}
+                alt=""
+                className="h-12 w-9 object-cover border border-black/10 bg-[#eee] shrink-0"
+              />
+            ) : null}
             <div className="min-w-0 flex-1">
               <p className="font-medium text-[#2a2420] truncate">
                 {g.adminLabel}
               </p>
               <p className="text-[11px] text-muted">
-                id: {g.id} · {g.columns.map((c) => c.label).join(" / ")} ·{" "}
-                {g.rows.length} medidas
+                id: {g.id} ·{" "}
+                {g.photoOnly
+                  ? "só foto"
+                  : `${g.columns.map((c) => c.label).join(" / ")} · ${g.rows.length} medidas`}
               </p>
             </div>
             <button
@@ -263,15 +300,23 @@ export function SizeGuidesManager({
           type="button"
           className="btn btn-outline text-xs"
           disabled={busy || guides.length >= 30}
-          onClick={addGuide}
+          onClick={() => addGuide(false)}
         >
-          + Adicionar nova tabela
+          + Adicionar tabela (grade)
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline text-xs"
+          disabled={busy || guides.length >= 30}
+          onClick={() => addGuide(true)}
+        >
+          + Adicionar só a foto
         </button>
         {editing ? (
           <button
             type="button"
             className="btn btn-primary text-xs"
-            disabled={busy}
+            disabled={busy || uploadBusy}
             onClick={() => persist(guides)}
           >
             {busy ? "Salvando…" : "Salvar alterações desta edição"}
@@ -291,87 +336,175 @@ export function SizeGuidesManager({
             />
           </label>
 
-          <label className="block text-xs text-[#5c4336]">
-            Tamanhos (colunas), separados por vírgula — ex: P, M, G
+          <label className="inline-flex items-center gap-2 text-xs text-[#5c4336] cursor-pointer">
             <input
-              className="input mt-1 text-sm"
-              defaultValue={editing.columns.map((c) => c.label).join(", ")}
-              key={`cols-${editing.id}-${editing.columns.map((c) => c.key).join("-")}`}
-              onBlur={(e) => setColumnsFromLabels(e.target.value)}
+              type="checkbox"
+              className="accent-[#c2a45b]"
+              checked={Boolean(editing.photoOnly)}
+              onChange={(e) =>
+                updateEditing({
+                  photoOnly: e.target.checked,
+                  ...(e.target.checked
+                    ? {
+                        columns: [{ key: "foto", label: "FOTO" }],
+                        rows: [
+                          { label: "TABELA", values: { foto: "VER FOTO" } },
+                        ],
+                        markers: undefined,
+                      }
+                    : {}),
+                })
+              }
             />
+            Usar apenas a foto da tabela (sem preencher a grade)
           </label>
 
-          <label className="block text-xs text-[#5c4336]">
-            Foto da tabela (URL opcional)
-            <input
-              className="input mt-1 text-sm"
-              value={editing.imageUrl || ""}
-              placeholder="/brand/size-guide-….png ou /uploads/…"
-              onChange={(e) => updateEditing({ imageUrl: e.target.value })}
-            />
-          </label>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[280px] text-xs border-collapse bg-white">
-              <thead>
-                <tr>
-                  <th className="border border-[#e0d4c8] p-1.5 text-left">
-                    Medida
-                  </th>
-                  {editing.columns.map((c) => (
-                    <th
-                      key={c.key}
-                      className="border border-[#e0d4c8] p-1.5 text-center"
-                    >
-                      {c.label}
-                    </th>
-                  ))}
-                  <th className="border border-[#e0d4c8] p-1.5 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {editing.rows.map((row, ri) => (
-                  <tr key={`${editing.id}-row-${ri}`}>
-                    <td className="border border-[#e0d4c8] p-1">
-                      <input
-                        className="input !py-1 text-xs w-full min-w-[5rem]"
-                        value={row.label}
-                        onChange={(e) => setRowLabel(ri, e.target.value)}
-                      />
-                    </td>
-                    {editing.columns.map((c) => (
-                      <td key={c.key} className="border border-[#e0d4c8] p-1">
-                        <input
-                          className="input !py-1 text-xs w-full min-w-[4rem] text-center"
-                          value={row.values[c.key] || ""}
-                          onChange={(e) => setCell(ri, c.key, e.target.value)}
-                        />
-                      </td>
-                    ))}
-                    <td className="border border-[#e0d4c8] p-1 text-center">
-                      <button
-                        type="button"
-                        className="text-red-800"
-                        disabled={editing.rows.length <= 1}
-                        onClick={() => removeRow(ri)}
-                        aria-label="Remover linha"
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            <p className="text-xs text-[#5c4336] font-medium">
+              Foto da tabela
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="h-40 w-28 border border-[#e0d4c8] bg-white overflow-hidden flex items-center justify-center">
+                {editing.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={editing.imageUrl}
+                    alt="Prévia da tabela"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted p-2 text-center">
+                    Nenhuma foto
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp"
+                  className="block text-xs max-w-[16rem]"
+                  disabled={uploadBusy || busy}
+                  onChange={(e) =>
+                    void uploadPhoto(e.target.files?.[0] || null)
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline text-xs"
+                  disabled={uploadBusy || busy}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {uploadBusy ? "Enviando foto…" : "Fazer upload da foto"}
+                </button>
+                {editing.imageUrl ? (
+                  <button
+                    type="button"
+                    className="block text-xs underline text-red-800"
+                    disabled={uploadBusy || busy}
+                    onClick={() => updateEditing({ imageUrl: "" })}
+                  >
+                    Remover foto
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <label className="block text-[11px] text-muted">
+              Ou cole a URL
+              <input
+                className="input mt-1 text-sm"
+                value={editing.imageUrl || ""}
+                placeholder="/uploads/… ou link da imagem"
+                onChange={(e) => updateEditing({ imageUrl: e.target.value })}
+              />
+            </label>
           </div>
 
-          <button
-            type="button"
-            className="text-xs underline text-[#5c4336]"
-            onClick={addRow}
-          >
-            + Linha de medida
-          </button>
+          {!editing.photoOnly ? (
+            <>
+              <label className="block text-xs text-[#5c4336]">
+                Tamanhos (colunas), separados por vírgula — ex: P, M, G
+                <input
+                  className="input mt-1 text-sm"
+                  defaultValue={editing.columns.map((c) => c.label).join(", ")}
+                  key={`cols-${editing.id}-${editing.columns.map((c) => c.key).join("-")}`}
+                  onBlur={(e) => setColumnsFromLabels(e.target.value)}
+                />
+              </label>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[280px] text-xs border-collapse bg-white">
+                  <thead>
+                    <tr>
+                      <th className="border border-[#e0d4c8] p-1.5 text-left">
+                        Medida
+                      </th>
+                      {editing.columns.map((c) => (
+                        <th
+                          key={c.key}
+                          className="border border-[#e0d4c8] p-1.5 text-center"
+                        >
+                          {c.label}
+                        </th>
+                      ))}
+                      <th className="border border-[#e0d4c8] p-1.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editing.rows.map((row, ri) => (
+                      <tr key={`${editing.id}-row-${ri}`}>
+                        <td className="border border-[#e0d4c8] p-1">
+                          <input
+                            className="input !py-1 text-xs w-full min-w-[5rem]"
+                            value={row.label}
+                            onChange={(e) => setRowLabel(ri, e.target.value)}
+                          />
+                        </td>
+                        {editing.columns.map((c) => (
+                          <td
+                            key={c.key}
+                            className="border border-[#e0d4c8] p-1"
+                          >
+                            <input
+                              className="input !py-1 text-xs w-full min-w-[4rem] text-center"
+                              value={row.values[c.key] || ""}
+                              onChange={(e) =>
+                                setCell(ri, c.key, e.target.value)
+                              }
+                            />
+                          </td>
+                        ))}
+                        <td className="border border-[#e0d4c8] p-1 text-center">
+                          <button
+                            type="button"
+                            className="text-red-800"
+                            disabled={editing.rows.length <= 1}
+                            onClick={() => removeRow(ri)}
+                            aria-label="Remover linha"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <button
+                type="button"
+                className="text-xs underline text-[#5c4336]"
+                onClick={addRow}
+              >
+                + Linha de medida
+              </button>
+            </>
+          ) : (
+            <p className="text-[11px] text-muted">
+              Modo só-foto: a cliente vê a imagem completa no Guia de medidas.
+              Não precisa preencher P/M/G.
+            </p>
+          )}
 
           <label className="block text-xs text-[#5c4336]">
             Texto da modelo (uma linha por item)
@@ -404,7 +537,7 @@ export function SizeGuidesManager({
       {msg ? (
         <p
           className={`text-xs ${
-            /falha|erro|não|imposs/i.test(msg)
+            /falha|erro|não|imposs|envie/i.test(msg)
               ? "text-red-800"
               : "text-emerald-800"
           }`}
