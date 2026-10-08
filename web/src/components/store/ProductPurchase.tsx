@@ -44,6 +44,7 @@ type Props = {
   onColorChange: (color: string) => void;
   sizeGuideImageUrl?: string | null;
   sizeGuide?: string | null;
+  sizeGuideData?: import("@/lib/size-guides").SizeGuide | null;
 };
 
 export function ProductPurchase({
@@ -52,6 +53,7 @@ export function ProductPurchase({
   onColorChange,
   sizeGuideImageUrl,
   sizeGuide,
+  sizeGuideData,
 }: Props) {
   const router = useRouter();
   const sitePromo = useSitePromo();
@@ -512,6 +514,7 @@ export function ProductPurchase({
         onClose={() => setGuideOpen(false)}
         imageUrl={sizeGuideImageUrl}
         sizeGuide={sizeGuide}
+        guideData={sizeGuideData}
       />
     </div>
   );

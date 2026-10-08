@@ -10,7 +10,7 @@ import {
   getProductReadiness,
   readinessErrorPayload,
 } from "@/lib/product-readiness";
-import { normalizeSizeGuide } from "@/lib/size-guides";
+import { normalizeSizeGuideAsync } from "@/lib/site-settings";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -123,6 +123,11 @@ export async function PATCH(req: NextRequest, { params }: Props) {
     }
   }
 
+  const sizeGuideValue =
+    body.sizeGuide !== undefined
+      ? await normalizeSizeGuideAsync(body.sizeGuide)
+      : undefined;
+
   const product = await prisma.product.update({
     where: { id },
     data: {
@@ -148,9 +153,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       ...(body.showPaymentFlags !== undefined
         ? { showPaymentFlags: Boolean(body.showPaymentFlags) }
         : {}),
-      ...(body.sizeGuide !== undefined
-        ? { sizeGuide: normalizeSizeGuide(body.sizeGuide) }
-        : {}),
+      ...(sizeGuideValue !== undefined ? { sizeGuide: sizeGuideValue } : {}),
       ...("weightKg" in dimOverrides
         ? { weightKg: dimOverrides.weightKg }
         : {}),

@@ -66,6 +66,12 @@ export default async function AdminProductsPage() {
             Fotos duplicadas
           </Link>
           <Link
+            href="/admin/produtos/tabelas-medidas"
+            className="text-sm px-3 py-2 border border-black/15 bg-white hover:bg-[#f7f1ea]"
+          >
+            Tabelas de medidas
+          </Link>
+          <Link
             href="/admin/produtos/textos"
             className="text-sm px-3 py-2 border border-black/15 bg-white hover:bg-[#f7f1ea]"
           >

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import {
   getSizeGuide,
+  type SizeGuide,
   type SizeGuideId,
   type SizeGuideMarker,
 } from "@/lib/size-guides";
@@ -15,6 +16,8 @@ type Props = {
   imageUrl?: string | null;
   /** Qual tabela mostrar no produto. */
   sizeGuide?: SizeGuideId | string | null;
+  /** Dados resolvidos no servidor (catálogo do admin). */
+  guideData?: SizeGuide | null;
 };
 
 const FALLBACK_MARKERS: SizeGuideMarker[] = [
@@ -66,8 +69,9 @@ export function SizeGuideModal({
   onClose,
   imageUrl,
   sizeGuide,
+  guideData,
 }: Props) {
-  const guide = getSizeGuide(sizeGuide);
+  const guide = guideData || getSizeGuide(sizeGuide);
   const photo = guide.imageUrl || imageUrl || null;
   const markers = guide.markers?.length ? guide.markers : FALLBACK_MARKERS;
 

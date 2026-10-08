@@ -4,7 +4,7 @@ import {
   getSizeGuideLabels,
   setSizeGuideLabels,
 } from "@/lib/site-settings";
-import { SIZE_GUIDES, type SizeGuideLabelMap } from "@/lib/size-guides";
+import { type SizeGuideLabelMap } from "@/lib/size-guides";
 
 async function requireStaff() {
   const session = await adminAuth();
@@ -22,10 +22,7 @@ export async function GET() {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
   const labels = await getSizeGuideLabels();
-  return NextResponse.json({
-    labels,
-    defaults: Object.fromEntries(SIZE_GUIDES.map((g) => [g.id, g.adminLabel])),
-  });
+  return NextResponse.json({ labels, defaults: labels });
 }
 
 export async function PUT(req: NextRequest) {

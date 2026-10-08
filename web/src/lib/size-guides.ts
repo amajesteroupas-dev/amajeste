@@ -1,4 +1,4 @@
-export type SizeGuideId = "mg" | "pmg" | "casaco" | "top";
+export type SizeGuideId = string;
 
 export type SizeGuideColumn = {
   key: string;
@@ -169,27 +169,190 @@ const TOP: SizeGuide = {
   note: "Tamanho único, veste do P ao G.",
 };
 
-export const SIZE_GUIDES: SizeGuide[] = [MG, PMG, CASACO, TOP];
+/** Tabelas iniciais (usadas se ainda não houver catálogo salvo no admin). */
+export const BUILTIN_SIZE_GUIDES: SizeGuide[] = [MG, PMG, CASACO, TOP];
 
-const SIZE_GUIDE_IDS = new Set<string>(SIZE_GUIDES.map((g) => g.id));
+/** @deprecated use BUILTIN_SIZE_GUIDES / getSizeGuidesCatalog */
+export const SIZE_GUIDES: SizeGuide[] = BUILTIN_SIZE_GUIDES;
 
-export function normalizeSizeGuide(value: unknown): SizeGuideId {
+export function cloneBuiltinSizeGuides(): SizeGuide[] {
+  return structuredClone(BUILTIN_SIZE_GUIDES);
+}
+
+export function slugifySizeGuideId(raw: string): string {
+  return String(raw || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+export function uniqueSizeGuideId(
+  preferred: string,
+  existing: Iterable<string>
+): string {
+  const used = new Set(
+    [...existing].map((id) => String(id).toLowerCase()).filter(Boolean)
+  );
+  let base = slugifySizeGuideId(preferred) || "tabela";
+  if (base === "new") base = "tabela";
+  let id = base;
+  let n = 2;
+  while (used.has(id)) {
+    id = `${base}-${n}`.slice(0, 40);
+    n += 1;
+  }
+  return id;
+}
+
+function cleanText(value: unknown, max = 120): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+export function sanitizeSizeGuide(
+  raw: unknown,
+  opts?: { existingIds?: Iterable<string> }
+): SizeGuide | null {
+  if (!raw || typeof raw !== "object") return null;
+  const g = raw as Partial<SizeGuide>;
+  const preferred =
+    cleanText(g.id, 40) || cleanText(g.adminLabel, 40) || "tabela";
+  const finalId = uniqueSizeGuideId(preferred, opts?.existingIds || []);
+  const adminLabel =
+    cleanText(g.adminLabel, 80) || `Tabela ${finalId.toUpperCase()}`;
+
+  let columns: SizeGuideColumn[] = Array.isArray(g.columns)
+    ? g.columns
+        .map((c, i) => {
+          const label = cleanText(c?.label, 24) || `T${i + 1}`;
+          const key =
+            slugifySizeGuideId(cleanText(c?.key, 24) || label) || `c${i + 1}`;
+          return { key, label };
+        })
+        .filter((c) => c.key && c.label)
+        .slice(0, 8)
+    : [];
+  if (!columns.length) {
+    columns = [
+      { key: "p", label: "P" },
+      { key: "m", label: "M" },
+      { key: "g", label: "G" },
+    ];
+  }
+  const seenKeys = new Set<string>();
+  columns = columns.filter((c) => {
+    if (seenKeys.has(c.key)) return false;
+    seenKeys.add(c.key);
+    return true;
+  });
+
+  const rows: SizeGuideRow[] = Array.isArray(g.rows)
+    ? g.rows
+        .map((r) => {
+          const label = cleanText(r?.label, 40).toUpperCase();
+          if (!label) return null;
+          const values: Record<string, string> = {};
+          for (const col of columns) {
+            values[col.key] = cleanText(
+              r?.values?.[col.key] ?? "",
+              40
+            ).toUpperCase();
+          }
+          return { label, values };
+        })
+        .filter((r): r is SizeGuideRow => Boolean(r))
+        .slice(0, 12)
+    : [];
+
+  if (!rows.length) {
+    rows.push({
+      label: "BUSTO",
+      values: Object.fromEntries(columns.map((c) => [c.key, ""])),
+    });
+  }
+
+  const markers: SizeGuideMarker[] | undefined = Array.isArray(g.markers)
+    ? g.markers
+        .map((m) => ({
+          label: cleanText(m?.label, 24).toUpperCase(),
+          top: cleanText(m?.top, 12) || "40%",
+        }))
+        .filter((m) => m.label)
+        .slice(0, 6)
+    : undefined;
+
+  const modelLines = Array.isArray(g.modelLines)
+    ? g.modelLines.map((l) => cleanText(l, 120)).filter(Boolean).slice(0, 8)
+    : undefined;
+
+  const imageUrl = cleanText(g.imageUrl, 300) || undefined;
+  const modelTitle = cleanText(g.modelTitle, 80) || undefined;
+  const note = cleanText(g.note, 200) || undefined;
+
+  return {
+    id: finalId,
+    adminLabel,
+    columns,
+    rows,
+    ...(imageUrl ? { imageUrl } : {}),
+    ...(markers?.length ? { markers } : {}),
+    ...(modelTitle ? { modelTitle } : {}),
+    ...(modelLines?.length ? { modelLines } : {}),
+    ...(note ? { note } : {}),
+  };
+}
+
+export function sanitizeSizeGuidesCatalog(raw: unknown): SizeGuide[] {
+  if (!Array.isArray(raw) || !raw.length) return cloneBuiltinSizeGuides();
+  const out: SizeGuide[] = [];
+  const used = new Set<string>();
+  for (const item of raw.slice(0, 30)) {
+    const guide = sanitizeSizeGuide(item, { existingIds: used });
+    if (!guide) continue;
+    used.add(guide.id);
+    out.push(guide);
+  }
+  return out.length ? out : cloneBuiltinSizeGuides();
+}
+
+export function findSizeGuide(
+  guides: SizeGuide[],
+  value: unknown
+): SizeGuide {
   const raw = String(value || "").trim().toLowerCase();
-  if (SIZE_GUIDE_IDS.has(raw)) return raw as SizeGuideId;
-  return "mg";
+  return (
+    guides.find((g) => g.id === raw) ||
+    guides[0] ||
+    MG
+  );
 }
 
+export function normalizeSizeGuide(
+  value: unknown,
+  guides?: SizeGuide[] | null
+): SizeGuideId {
+  const list = guides?.length ? guides : BUILTIN_SIZE_GUIDES;
+  const raw = String(value || "").trim().toLowerCase();
+  if (list.some((g) => g.id === raw)) return raw;
+  return list[0]?.id || "mg";
+}
+
+/** Sync fallback (builtins only). Prefer findSizeGuide with catalog. */
 export function getSizeGuide(value: unknown): SizeGuide {
-  const id = normalizeSizeGuide(value);
-  return SIZE_GUIDES.find((g) => g.id === id) || MG;
+  return findSizeGuide(BUILTIN_SIZE_GUIDES, value);
 }
 
-export type SizeGuideLabelMap = Partial<Record<SizeGuideId, string>>;
+export type SizeGuideLabelMap = Record<string, string>;
 
-export function defaultSizeGuideLabels(): Record<SizeGuideId, string> {
-  return Object.fromEntries(
-    SIZE_GUIDES.map((g) => [g.id, g.adminLabel])
-  ) as Record<SizeGuideId, string>;
+export function defaultSizeGuideLabels(
+  guides: SizeGuide[] = BUILTIN_SIZE_GUIDES
+): Record<string, string> {
+  return Object.fromEntries(guides.map((g) => [g.id, g.adminLabel]));
 }
 
 export function resolveSizeGuideLabel(
@@ -198,4 +361,34 @@ export function resolveSizeGuideLabel(
 ): string {
   const custom = labels?.[guide.id]?.trim();
   return custom || guide.adminLabel;
+}
+
+export function emptySizeGuideDraft(existingIds: Iterable<string>): SizeGuide {
+  const id = uniqueSizeGuideId("nova-tabela", existingIds);
+  return {
+    id,
+    adminLabel: "Nova tabela de medidas",
+    columns: [
+      { key: "p", label: "P" },
+      { key: "m", label: "M" },
+      { key: "g", label: "G" },
+    ],
+    rows: [
+      {
+        label: "BUSTO",
+        values: { p: "", m: "", g: "" },
+      },
+      {
+        label: "CINTURA",
+        values: { p: "", m: "", g: "" },
+      },
+      {
+        label: "QUADRIL",
+        values: { p: "", m: "", g: "" },
+      },
+    ],
+    markers: DEFAULT_MARKERS,
+    modelTitle: "Referência da modelo",
+    modelLines: ["A modelo veste M."],
+  };
 }

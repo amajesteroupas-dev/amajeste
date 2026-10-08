@@ -90,6 +90,11 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/produtos", label: "Produtos", icon: Package },
       {
+        href: "/admin/produtos/tabelas-medidas",
+        label: "Tabelas de medidas",
+        icon: Scissors,
+      },
+      {
         href: "/admin/produtos/textos",
         label: "Textos de pagamento",
         icon: Megaphone,
@@ -167,7 +172,8 @@ function isItemActive(pathname: string, href: string) {
       pathname === "/admin/produtos" ||
       (pathname.startsWith("/admin/produtos/") &&
         !pathname.startsWith("/admin/produtos/lixeira") &&
-        !pathname.startsWith("/admin/produtos/textos"))
+        !pathname.startsWith("/admin/produtos/textos") &&
+        !pathname.startsWith("/admin/produtos/tabelas-medidas"))
     );
   }
   return pathname === href || pathname.startsWith(`${href}/`);

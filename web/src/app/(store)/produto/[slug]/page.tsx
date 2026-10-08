@@ -6,7 +6,10 @@ import { ProductCard } from "@/components/store/ProductCard";
 import { ProductReviews } from "@/components/store/ProductReviews";
 import { normalizeColor, pickImageForColor } from "@/lib/colors";
 import { buildProductCardProps } from "@/lib/product-card";
-import { getSizeGuideImageUrl } from "@/lib/site-settings";
+import {
+  getSizeGuideImageUrl,
+  resolveProductSizeGuide,
+} from "@/lib/site-settings";
 import { ProductViewTracker } from "@/components/store/ProductViewTracker";
 import { requireCustomer } from "@/lib/customer";
 
@@ -69,7 +72,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
   });
 
   const blocks = splitDescription(product.description);
-  const sizeGuideImageUrl = await getSizeGuideImageUrl();
+  const [sizeGuideImageUrl, sizeGuideData] = await Promise.all([
+    getSizeGuideImageUrl(),
+    resolveProductSizeGuide(product.sizeGuide),
+  ]);
   const images = [...product.images];
   if (focusColor) {
     const preferred = pickImageForColor(images, focusColor);
@@ -141,6 +147,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         descriptionBlocks={blocks}
         sizeGuideImageUrl={sizeGuideImageUrl}
         sizeGuide={product.sizeGuide}
+        sizeGuideData={sizeGuideData}
         product={{
           id: product.id,
           name: product.name,

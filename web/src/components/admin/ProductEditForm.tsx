@@ -14,16 +14,16 @@ import {
   type ReadinessIssue,
 } from "@/lib/product-readiness";
 import {
-  SIZE_GUIDES,
-  defaultSizeGuideLabels,
+  BUILTIN_SIZE_GUIDES,
   normalizeSizeGuide,
-  type SizeGuideId,
+  type SizeGuide,
 } from "@/lib/size-guides";
 import {
   postBinaryFile,
   readJsonSafe,
   uploadHttpError,
 } from "@/lib/binary-upload";
+import { SizeGuidesManager } from "@/components/admin/SizeGuidesManager";
 
 type Props = {
   product: {
@@ -58,7 +58,7 @@ type Props = {
     active: boolean;
   }[];
   images: { id: string; url: string; alt: string | null }[];
-  sizeGuideLabels?: Record<SizeGuideId, string>;
+  sizeGuides?: SizeGuide[];
 };
 
 export function ProductEditForm({
@@ -66,7 +66,7 @@ export function ProductEditForm({
   categories: initialCategories,
   variants,
   images,
-  sizeGuideLabels: initialLabels,
+  sizeGuides: initialGuides,
 }: Props) {
   const router = useRouter();
   const [msg, setMsg] = useState("");
@@ -85,18 +85,14 @@ export function ProductEditForm({
   const [lengthCm, setLengthCm] = useState(product.lengthCm ?? 30);
   const [widthCm, setWidthCm] = useState(product.widthCm ?? 25);
   const [heightCm, setHeightCm] = useState(product.heightCm ?? 5);
-  const [sizeGuide, setSizeGuide] = useState(
-    normalizeSizeGuide(product.sizeGuide)
+  const [guides, setGuides] = useState<SizeGuide[]>(
+    () =>
+      initialGuides?.length ? initialGuides : BUILTIN_SIZE_GUIDES
   );
-  const [guideLabels, setGuideLabels] = useState<Record<SizeGuideId, string>>(
-    () => ({ ...defaultSizeGuideLabels(), ...(initialLabels || {}) })
+  const [sizeGuide, setSizeGuide] = useState(() =>
+    normalizeSizeGuide(product.sizeGuide, guides)
   );
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameDraft, setRenameDraft] = useState<Record<SizeGuideId, string>>(
-    () => ({ ...defaultSizeGuideLabels(), ...(initialLabels || {}) })
-  );
-  const [renameBusy, setRenameBusy] = useState(false);
-  const [renameMsg, setRenameMsg] = useState("");
+  const [manageGuidesOpen, setManageGuidesOpen] = useState(false);
   const [newCat, setNewCat] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [library, setLibrary] = useState<MediaGalleryItem[]>([]);
@@ -185,7 +181,7 @@ export function ProductEditForm({
       lengthCm: Number(form.get("lengthCm") || 0) || null,
       widthCm: Number(form.get("widthCm") || 0) || null,
       heightCm: Number(form.get("heightCm") || 0) || null,
-      sizeGuide: normalizeSizeGuide(form.get("sizeGuide")),
+      sizeGuide: normalizeSizeGuide(form.get("sizeGuide"), guides),
     };
 
     if (payload.active) {
@@ -838,119 +834,48 @@ export function ProductEditForm({
             <div className="block text-xs uppercase tracking-wider text-muted md:col-span-2">
               <label className="block">
                 Guia de medidas
-                <HelpTip text="Escolhe qual tabela abre no botão Guia de medidas da loja. Você pode renomear os nomes das tabelas abaixo." />
+                <HelpTip text="Escolhe qual tabela abre na loja. Você também pode adicionar ou remover tabelas pelo painel." />
                 <select
                   name="sizeGuide"
                   value={sizeGuide}
                   onChange={(e) =>
-                    setSizeGuide(normalizeSizeGuide(e.target.value))
+                    setSizeGuide(normalizeSizeGuide(e.target.value, guides))
                   }
                   className="input mt-1"
                 >
-                  {SIZE_GUIDES.map((g) => (
+                  {guides.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {guideLabels[g.id] || g.adminLabel}
+                      {g.adminLabel}
                     </option>
                   ))}
                 </select>
               </label>
               <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
-                Produtos já cadastrados continuam na tabela atual (M e G) até
-                você trocar aqui.
+                Produtos já cadastrados continuam na tabela atual até você
+                trocar aqui.
               </span>
               <button
                 type="button"
                 className="mt-2 text-[11px] normal-case tracking-normal underline text-[#5c4336] hover:text-[#2a2420]"
-                onClick={() => {
-                  setRenameOpen((v) => !v);
-                  setRenameDraft({ ...guideLabels });
-                  setRenameMsg("");
-                }}
+                onClick={() => setManageGuidesOpen((v) => !v)}
               >
-                {renameOpen
-                  ? "Fechar renomear tabelas"
-                  : "Renomear nomes das tabelas"}
+                {manageGuidesOpen
+                  ? "Fechar gerenciar tabelas"
+                  : "Adicionar / remover tabelas de medidas"}
               </button>
-              {renameOpen ? (
-                <div className="mt-3 space-y-2 border border-black/10 bg-[#faf7f3] p-3 normal-case tracking-normal">
-                  <p className="text-[11px] text-muted">
-                    Os nomes aparecem só no admin (neste seletor). Vale para
-                    todos os produtos.
-                  </p>
-                  {SIZE_GUIDES.map((g) => (
-                    <label
-                      key={g.id}
-                      className="block text-[11px] text-[#5c4336]"
-                    >
-                      {g.id}
-                      <input
-                        type="text"
-                        value={renameDraft[g.id] || ""}
-                        maxLength={80}
-                        onChange={(e) =>
-                          setRenameDraft((prev) => ({
-                            ...prev,
-                            [g.id]: e.target.value,
-                          }))
-                        }
-                        className="input mt-1 text-sm"
-                        placeholder={g.adminLabel}
-                      />
-                    </label>
-                  ))}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      className="btn btn-primary text-xs"
-                      disabled={renameBusy}
-                      onClick={async () => {
-                        setRenameBusy(true);
-                        setRenameMsg("");
-                        try {
-                          const res = await fetch(
-                            "/api/admin/settings/size-guide-labels",
-                            {
-                              method: "PUT",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({ labels: renameDraft }),
-                            }
-                          );
-                          const data = await res.json().catch(() => ({}));
-                          if (!res.ok) {
-                            setRenameMsg(
-                              data.error || "Falha ao salvar nomes."
-                            );
-                            return;
-                          }
-                          setGuideLabels(data.labels);
-                          setRenameDraft(data.labels);
-                          setRenameMsg("Nomes das tabelas atualizados.");
-                        } finally {
-                          setRenameBusy(false);
-                        }
-                      }}
-                    >
-                      {renameBusy ? "Salvando…" : "Salvar nomes"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs underline text-muted"
-                      disabled={renameBusy}
-                      onClick={() => {
-                        const defaults = defaultSizeGuideLabels();
-                        setRenameDraft(defaults);
-                      }}
-                    >
-                      Restaurar padrões
-                    </button>
-                    {renameMsg ? (
-                      <span className="text-[11px] text-[#5c4336]">
-                        {renameMsg}
-                      </span>
-                    ) : null}
-                  </div>
+              {manageGuidesOpen ? (
+                <div className="mt-3 border border-black/10 bg-[#faf7f3] p-3">
+                  <SizeGuidesManager
+                    embedded
+                    initialGuides={guides}
+                    selectedId={sizeGuide}
+                    onGuidesChange={(next) => {
+                      setGuides(next);
+                      setSizeGuide((cur) =>
+                        normalizeSizeGuide(cur, next)
+                      );
+                    }}
+                  />
                 </div>
               ) : null}
             </div>

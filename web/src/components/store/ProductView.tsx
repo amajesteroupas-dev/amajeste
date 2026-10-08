@@ -39,6 +39,7 @@ type Props = {
   descriptionBlocks: string[];
   sizeGuideImageUrl?: string | null;
   sizeGuide?: string | null;
+  sizeGuideData?: import("@/lib/size-guides").SizeGuide | null;
 };
 
 const SECTION_HEADING =
@@ -90,6 +91,7 @@ export function ProductView({
   descriptionBlocks,
   sizeGuideImageUrl,
   sizeGuide,
+  sizeGuideData,
 }: Props) {
   const preferred = initialColor ? normalizeColor(initialColor) : null;
   const firstInStock = product.variants.find((v) => v.stock > 0);
@@ -133,6 +135,7 @@ export function ProductView({
           onColorChange={setColor}
           sizeGuideImageUrl={sizeGuideImageUrl}
           sizeGuide={sizeGuide}
+          sizeGuideData={sizeGuideData}
         />
 
         {sections.length > 0 ? (
