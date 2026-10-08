@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { normalizeColor } from "@/lib/colors";
 
 export type ReadinessIssue = {
   code: string;
@@ -93,33 +92,8 @@ export function evaluateProductReadiness(
     });
   }
 
-  if (activeVariants.length > 0 && realImages.length > 0) {
-    const linkedColors = new Set<string>();
-    for (const img of realImages) {
-      if (!img.alt?.trim()) continue;
-      linkedColors.add(normalizeColor(img.alt));
-    }
-
-    const missingColors: string[] = [];
-    const seen = new Set<string>();
-    for (const v of activeVariants) {
-      const c = normalizeColor(v.color);
-      if (!c || seen.has(c)) continue;
-      seen.add(c);
-      if (!linkedColors.has(c)) missingColors.push(c);
-    }
-
-    if (missingColors.length > 0) {
-      issues.push({
-        code: "photo_per_color",
-        message:
-          missingColors.length === 1
-            ? `Cor “${missingColors[0]}” sem foto vinculada.`
-            : `Cores sem foto: ${missingColors.map((c) => `“${c}”`).join(", ")}.`,
-        hint: "Em cada foto, use o seletor “Cor desta foto” para vincular a cor correspondente. Uma foto por cor.",
-      });
-    }
-  }
+  // Vínculo foto↔cor é opcional: dá para cadastrar muitas cores sem foto de cada uma.
+  // Na loja, cores sem foto usam a primeira imagem do produto.
 
   return { ok: issues.length === 0, issues };
 }

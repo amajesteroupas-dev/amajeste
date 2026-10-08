@@ -731,8 +731,8 @@ export function ProductEditForm({
               Para ativar na loja
             </p>
             <p className="text-[#2a2420]">
-              Tudo certo: preço, categoria, frete, variante ativa e foto por
-              cor. Pode ativar na loja.
+              Tudo certo: preço, categoria, frete, variante ativa e ao menos
+              uma foto real. Pode ativar na loja.
             </p>
           </div>
         ) : null}
@@ -926,9 +926,8 @@ export function ProductEditForm({
               <span>
                 <span className="font-medium">Ativo na loja</span>
                 <span className="block text-xs text-muted mt-0.5 normal-case tracking-normal">
-                  Só marque quando fotos reais, frete, variantes e vínculo de
-                  cor por foto estiverem ok. Rascunho incompleto pode ficar
-                  inativo.
+                  Só marque quando houver foto real, frete e pelo menos uma
+                  variante. Não precisa de foto para cada cor.
                 </span>
                 {activeChecked && !readiness.ok ? (
                   <span className="block text-xs text-rose-dark mt-1 normal-case tracking-normal">
@@ -1062,9 +1061,10 @@ export function ProductEditForm({
         summary={`${variants.length} opção(ões) · ${variants.filter((v) => v.active).length} ativa(s) · estoque total ${variants.reduce((s, v) => s + v.stock, 0)}`}
       >
         <p className="text-sm text-muted max-w-2xl leading-relaxed">
-          Cada combinação de tamanho e cor deste produto (ex.: M / Rosa). Para
-          compras do dia a dia, use o menu <strong>Estoque</strong>. Variantes
-          inativas ficam no admin mas <strong>não aparecem na loja</strong>.
+          Cada combinação de tamanho e cor deste produto (ex.: M / Rosa). Pode
+          cadastrar várias cores sem foto de cada uma. Para compras do dia a
+          dia, use o menu <strong>Estoque</strong>. Variantes inativas ficam no
+          admin mas <strong>não aparecem na loja</strong>.
         </p>
         <div className="overflow-x-auto">
           <table className="table mb-4">
@@ -1264,10 +1264,10 @@ export function ProductEditForm({
         }
       >
         <p className="text-sm text-muted">
-          Em cada foto, escolha a <strong>cor</strong> correspondente para a
-          loja trocar a imagem ao clicar nas bolinhas.{" "}
-          <strong>Não adicione a mesma foto várias vezes</strong> — uma foto, uma
-          cor.
+          Opcional: em cada foto, escolha a <strong>cor</strong> para a loja
+          trocar a imagem ao clicar nas bolinhas. Cores sem foto vinculada
+          usam a primeira imagem do produto — não precisa fotografar todas as
+          cores. <strong>Não adicione a mesma foto várias vezes.</strong>
         </p>
 
         {images.length > 1 ? (
