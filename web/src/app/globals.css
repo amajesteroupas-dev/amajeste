@@ -802,6 +802,8 @@ a {
   object-position: center 8%;
 }
 .banner-stage-copy {
+  grid-column: 2;
+  grid-row: 1;
   position: relative;
   z-index: 2;
   display: flex;
@@ -814,14 +816,23 @@ a {
     radial-gradient(ellipse 90% 55% at 50% 108%, rgba(214, 196, 176, 0.55), transparent 68%),
     #f6f1ea;
 }
+.banner-stage-photo:first-of-type {
+  grid-column: 1;
+  grid-row: 1;
+}
+.banner-stage-photo:last-of-type {
+  grid-column: 3;
+  grid-row: 1;
+}
 .banner-stage-title {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(2rem, 3.4vw, 3.35rem);
+  font-size: clamp(2rem, 3.2vw, 3.2rem);
   line-height: 0.98;
   letter-spacing: -0.02em;
   color: #5c4336;
-  max-width: 9ch;
+  max-width: 11ch;
+  text-wrap: balance;
 }
 .banner-stage-sub {
   margin-top: 0.75rem;
@@ -873,23 +884,33 @@ a {
 
   /* --- Estúdio / cutouts: foto de fundo, texto sobreposto --- */
   .banner-frame--stage {
-    height: min(78svh, 640px);
-    min-height: 520px;
+    height: min(70svh, 560px);
+    min-height: 460px;
   }
   .banner-stage {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr minmax(168px, 38%) 1fr;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .banner-stage-photo {
+    min-height: 0;
+    height: 100%;
   }
   .banner-stage-copy {
-    grid-column: 1 / -1;
-    padding: 0.85rem 1rem 2.1rem;
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0.65rem 0.45rem 1.3rem;
   }
   .banner-stage-title {
-    max-width: none;
-    font-size: clamp(1.7rem, 8vw, 2.3rem);
+    max-width: 9ch;
+    font-size: clamp(1.35rem, 5.4vw, 1.7rem);
   }
   .banner-stage-sub {
-    max-width: 34ch;
+    max-width: 18ch;
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+  }
+  .banner-stage-copy .banner-studio-cta {
+    margin-top: 0.65rem;
   }
 
   .banner-frame--studio .banner-studio-grid,

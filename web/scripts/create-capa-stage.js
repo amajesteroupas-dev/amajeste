@@ -48,18 +48,18 @@ const STYLE = {
   cta: {
     bold: true,
     font: "sans",
-    size: 13,
+    size: 12,
     color: "#ffffff",
     bgColor: "#5c4336",
     borderRadius: 0,
-    paddingX: 22,
-    paddingY: 12,
+    paddingX: 16,
+    paddingY: 11,
   },
 };
 
 const SLIDES = [
   {
-    title: "Seja bem-vinda",
+    title: "Seja bem\u2011vinda",
     subtitle: "A sua loja de moda fitness com presença",
     tagline: "Majesté",
     ctaLabel: "Comprar agora",
@@ -67,7 +67,7 @@ const SLIDES = [
     right: "/brand/capa/jaqueta-azul.jpg",
   },
   {
-    title: "Vista-se com estilo",
+    title: "Vista\u2011se com estilo",
     subtitle: "Cores e caimento para treinar com presença",
     tagline: "Movimento",
     ctaLabel: "Ver looks",
@@ -96,8 +96,7 @@ async function main() {
   const prisma = new PrismaClient();
   try {
     const cat = await prisma.category.findFirst({
-      where: { parentId: { not: null } },
-      orderBy: { sortOrder: "asc" },
+      where: { slug: "conjunto-legging" },
       select: { slug: true },
     });
     const href = cat?.slug ? `/categoria/${cat.slug}` : "/";
