@@ -451,7 +451,11 @@ export function BannerCarousel({ banners }: Props) {
           ? "banner-frame--fullbleed"
           : layout === "cutouts"
             ? "banner-frame--cutouts"
-            : "banner-frame--studio";
+            : layout === "stage"
+              ? "banner-frame--stage"
+              : "banner-frame--studio";
+
+  const stageRight = parseCutoutLayers(b.cutoutImages)[0]?.url || "";
 
   return (
     <section className="banner-carousel">
@@ -465,7 +469,7 @@ export function BannerCarousel({ banners }: Props) {
                 background: videoBg,
                 ["--banner-video-bg" as string]: videoBg,
               }
-            : layout === "studio"
+            : layout === "studio" || layout === "stage"
               ? { background: b.bgColor || "#f0e8df" }
               : layout === "promo"
                 ? { background: b.panelColor || b.bgColor || "#ebe3d8" }
@@ -650,6 +654,65 @@ export function BannerCarousel({ banners }: Props) {
               </p>
             )}
           </>
+        )}
+
+        {layout === "stage" && !cleanVideoStage && (
+          <div className="banner-stage">
+            <div className="banner-stage-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mediaSrc(b.imageUrl)}
+                alt=""
+                style={{ objectPosition: "center 8%" }}
+              />
+            </div>
+            <div className={`banner-stage-copy ${align}`}>
+              {b.tagline?.trim() ? (
+                <p className="hero-kicker mb-2" style={taglineCss}>
+                  {renderLayerText(taglineLayer, b.tagline)}
+                </p>
+              ) : null}
+              {b.title?.trim() ? (
+                <h1 className="banner-stage-title" style={titleCss}>
+                  {renderLayerText(titleLayer, b.title)}
+                </h1>
+              ) : null}
+              {b.highlight?.trim() ? (
+                <p className="mt-2" style={highlightCss}>
+                  {renderLayerText(highlightLayer, b.highlight)}
+                </p>
+              ) : null}
+              {b.subtitle?.trim() ? (
+                <p className="banner-stage-sub" style={subCss}>
+                  {renderLayerText(subLayer, b.subtitle)}
+                </p>
+              ) : null}
+              {b.promoText?.trim() ? (
+                <p className="banner-stage-sub" style={promoCss}>
+                  {renderLayerText(promoLayer, b.promoText)}
+                </p>
+              ) : null}
+              {b.ctaLabel ? (
+                <div className="banner-studio-cta" data-no-pan>
+                  <Link
+                    href={bannerCtaHref(b.ctaHref)}
+                    className="banner-cta-btn"
+                    style={ctaCss}
+                  >
+                    {renderLayerText(ctaLayer, b.ctaLabel)}
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+            <div className="banner-stage-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mediaSrc(stageRight || b.imageUrl)}
+                alt=""
+                style={{ objectPosition: "center 8%" }}
+              />
+            </div>
+          </div>
         )}
 
         {(layout === "studio" || layout === "cutouts") && !cleanVideoStage && (

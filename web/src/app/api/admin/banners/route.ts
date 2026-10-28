@@ -25,7 +25,7 @@ function clamp(n: number, min: number, max: number) {
 function frameFields(body: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
   if (body.layout !== undefined) {
-    const allowed = ["studio", "fullbleed", "promo", "overlay", "cutouts"];
+    const allowed = ["studio", "fullbleed", "promo", "overlay", "cutouts", "stage"];
     data.layout = allowed.includes(String(body.layout))
       ? String(body.layout)
       : "studio";
@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
           : "/brand/hero-photo-1.jpg",
       textAlign: body.textAlign || "left",
       overlay: typeof body.overlay === "number" ? clamp(body.overlay, 0, 0.7) : 0,
-      layout: ["studio", "fullbleed", "promo", "overlay", "cutouts"].includes(
+      layout: ["studio", "fullbleed", "promo", "overlay", "cutouts", "stage"].includes(
         body.layout
       )
         ? body.layout
