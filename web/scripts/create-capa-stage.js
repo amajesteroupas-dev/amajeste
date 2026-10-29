@@ -87,8 +87,8 @@ const SLIDES = [
     subtitle: "Peças que acompanham o seu ritmo",
     tagline: "Novidades",
     ctaLabel: "Comprar agora",
-    left: "/brand/capa/shorts-magenta-2.jpg",
-    right: "/brand/capa/conjunto-azul.jpg",
+    left: "/brand/capa/scallop-preto.jpg",
+    right: "/brand/capa/scallop-rosa.jpg",
   },
 ];
 
