@@ -663,7 +663,7 @@ export function BannerCarousel({ banners }: Props) {
               <img
                 src={mediaSrc(b.imageUrl)}
                 alt=""
-                style={{ objectPosition: "center 8%" }}
+                style={{ objectPosition: "center center" }}
               />
             </div>
             <div className={`banner-stage-copy ${align}`}>
@@ -709,7 +709,7 @@ export function BannerCarousel({ banners }: Props) {
               <img
                 src={mediaSrc(stageRight || b.imageUrl)}
                 alt=""
-                style={{ objectPosition: "center 8%" }}
+                style={{ objectPosition: "center center" }}
               />
             </div>
           </div>
