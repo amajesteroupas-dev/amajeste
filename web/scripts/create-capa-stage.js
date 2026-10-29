@@ -71,8 +71,8 @@ const SLIDES = [
     subtitle: "Cores e caimento para treinar com presença",
     tagline: "Movimento",
     ctaLabel: "Ver looks",
-    left: "/brand/capa/conjunto-azul.jpg",
-    right: "/brand/capa/macacao-magenta.jpg",
+    left: "/brand/capa/rosa-reto.jpg",
+    right: "/brand/capa/rosa-branco.jpg",
   },
   {
     title: "Do treino ao dia",
