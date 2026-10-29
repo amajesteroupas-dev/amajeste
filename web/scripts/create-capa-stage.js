@@ -64,7 +64,7 @@ const SLIDES = [
     tagline: "Majesté",
     ctaLabel: "Comprar agora",
     left: "/brand/capa/shorts-magenta.jpg",
-    right: "/brand/capa/jaqueta-azul.jpg",
+    right: "/brand/capa/jaqueta-azul-stage.jpg",
   },
   {
     title: "Vista\u2011se com estilo",
