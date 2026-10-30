@@ -882,35 +882,54 @@ a {
     bottom: 0.65rem;
   }
 
-  /* --- Estúdio / cutouts: foto de fundo, texto sobreposto --- */
+  /* Capa no celular: fotos inteiras lado a lado, texto embaixo. */
   .banner-frame--stage {
-    height: min(70svh, 560px);
-    min-height: 460px;
+    height: auto;
+    min-height: 0;
   }
   .banner-stage {
-    grid-template-columns: 1fr minmax(168px, 38%) 1fr;
-    grid-template-rows: minmax(0, 1fr);
+    position: relative;
+    inset: auto;
+    height: auto;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: min(88.9vw, 520px) auto;
   }
   .banner-stage-photo {
     min-height: 0;
     height: 100%;
   }
-  .banner-stage-copy {
+  .banner-stage-photo:first-of-type {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .banner-stage-photo:last-of-type {
     grid-column: 2;
     grid-row: 1;
-    padding: 0.65rem 0.45rem 1.3rem;
+  }
+  .banner-stage-copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding: 0.95rem 1.15rem 2.35rem;
+  }
+  .banner-stage-copy .hero-kicker {
+    margin-bottom: 0.35rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
   }
   .banner-stage-title {
-    max-width: 9ch;
-    font-size: clamp(1.35rem, 5.4vw, 1.7rem);
+    max-width: 16ch;
+    font-size: clamp(1.65rem, 6.4vw, 2.05rem);
   }
   .banner-stage-sub {
-    max-width: 18ch;
-    margin-top: 0.45rem;
-    font-size: 0.72rem;
+    max-width: 34ch;
+    margin-top: 0.4rem;
+    font-size: 0.84rem;
   }
   .banner-stage-copy .banner-studio-cta {
-    margin-top: 0.65rem;
+    margin-top: 0.75rem;
+  }
+  .banner-frame--stage .banner-nav-btn {
+    top: calc(min(88.9vw, 520px) / 2);
   }
 
   .banner-frame--studio .banner-studio-grid,
