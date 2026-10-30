@@ -455,8 +455,6 @@ export function BannerCarousel({ banners }: Props) {
               ? "banner-frame--stage"
               : "banner-frame--studio";
 
-  const stageRight = parseCutoutLayers(b.cutoutImages)[0]?.url || "";
-
   return (
     <section className="banner-carousel">
       <div
@@ -657,43 +655,43 @@ export function BannerCarousel({ banners }: Props) {
         )}
 
         {layout === "stage" && !cleanVideoStage && (
-          <div className="banner-stage">
-            <div className="banner-stage-photo">
+          <div className="banner-editorial">
+            <div className="banner-editorial-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={mediaSrc(b.imageUrl)}
                 alt=""
-                style={{ objectPosition: "center 8%" }}
+                style={{ objectPosition: `center ${b.focalY ?? 18}%` }}
               />
             </div>
-            <div className={`banner-stage-copy ${align}`}>
+            <div className={`banner-editorial-copy ${align}`}>
               {b.tagline?.trim() ? (
-                <p className="hero-kicker mb-2" style={taglineCss}>
+                <p className="banner-editorial-kicker" style={taglineCss}>
                   {renderLayerText(taglineLayer, b.tagline)}
                 </p>
               ) : null}
               {b.title?.trim() ? (
-                <h1 className="banner-stage-title" style={titleCss}>
+                <h1 className="banner-editorial-title" style={titleCss}>
                   {renderLayerText(titleLayer, b.title)}
                 </h1>
               ) : null}
               {b.highlight?.trim() ? (
-                <p className="mt-2" style={highlightCss}>
+                <p className="banner-editorial-sub" style={highlightCss}>
                   {renderLayerText(highlightLayer, b.highlight)}
                 </p>
               ) : null}
               {b.subtitle?.trim() ? (
-                <p className="banner-stage-sub" style={subCss}>
+                <p className="banner-editorial-sub" style={subCss}>
                   {renderLayerText(subLayer, b.subtitle)}
                 </p>
               ) : null}
               {b.promoText?.trim() ? (
-                <p className="banner-stage-sub" style={promoCss}>
+                <p className="banner-editorial-sub" style={promoCss}>
                   {renderLayerText(promoLayer, b.promoText)}
                 </p>
               ) : null}
               {b.ctaLabel ? (
-                <div className="banner-studio-cta" data-no-pan>
+                <div className="banner-editorial-cta" data-no-pan>
                   <Link
                     href={bannerCtaHref(b.ctaHref)}
                     className="banner-cta-btn"
@@ -703,14 +701,6 @@ export function BannerCarousel({ banners }: Props) {
                   </Link>
                 </div>
               ) : null}
-            </div>
-            <div className="banner-stage-photo">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mediaSrc(stageRight || b.imageUrl)}
-                alt=""
-                style={{ objectPosition: "center 8%" }}
-              />
             </div>
           </div>
         )}

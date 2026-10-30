@@ -779,70 +779,97 @@ a {
   height: clamp(480px, 62vw, 720px);
 }
 .banner-frame--stage {
-  height: clamp(520px, 68vw, 760px);
-  background: #f6f1ea;
+  height: min(88vh, 820px);
+  background: #241c18;
 }
-.banner-stage {
+.banner-editorial {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: 1.2fr minmax(230px, 0.78fr) 1.2fr;
+  grid-template-columns: 1fr min(42vw, 460px);
   height: 100%;
-  background: #f6f1ea;
+  background: #241c18;
 }
-.banner-stage-photo {
+.banner-editorial-photo {
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
   overflow: hidden;
-  background: #ebe4db;
+  background: #241c18;
 }
-.banner-stage-photo img {
+.banner-editorial-photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 8%;
+  object-position: center 18%;
 }
-.banner-stage-copy {
-  grid-column: 2;
+.banner-editorial-copy {
+  grid-column: 1;
   grid-row: 1;
-  position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 1.4rem 1.15rem 2.2rem;
+  padding: 3.2rem 3.2rem 3.6rem;
   background:
-    radial-gradient(ellipse 90% 55% at 50% 108%, rgba(214, 196, 176, 0.55), transparent 68%),
-    #f6f1ea;
+    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(198, 165, 106, 0.16), transparent 58%),
+    #241c18;
 }
-.banner-stage-photo:first-of-type {
-  grid-column: 1;
-  grid-row: 1;
+.banner-editorial-kicker {
+  margin: 0 0 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #c6a56a;
 }
-.banner-stage-photo:last-of-type {
-  grid-column: 3;
-  grid-row: 1;
-}
-.banner-stage-title {
-  font-family: var(--font-display);
+.banner-editorial-title {
+  margin: 0;
+  max-width: 9ch;
+  font-family: var(--font-display), Georgia, serif;
   font-weight: 500;
-  font-size: clamp(2rem, 3.2vw, 3.2rem);
-  line-height: 0.98;
+  font-size: clamp(2.8rem, 4.6vw, 4.6rem);
+  line-height: 0.92;
   letter-spacing: -0.02em;
-  color: #5c4336;
-  max-width: 11ch;
-  text-wrap: balance;
+  color: #f4efe9;
 }
-.banner-stage-sub {
-  margin-top: 0.75rem;
-  max-width: 22ch;
-  font-size: 0.95rem;
-  line-height: 1.45;
-  color: #5c534c;
+.banner-editorial-sub {
+  margin: 1rem 0 0;
+  max-width: 28ch;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(244, 239, 233, 0.78);
 }
-.banner-stage-copy .banner-studio-cta {
-  margin-top: 1.15rem;
+.banner-editorial-cta {
+  margin-top: 1.6rem;
+}
+@media (min-width: 768px) {
+  .banner-editorial-copy > * {
+    width: fit-content;
+    margin-left: auto;
+  }
+  .banner-editorial-copy > .banner-editorial-title {
+    max-width: 10ch;
+  }
+  .banner-editorial-copy > .banner-editorial-sub {
+    max-width: 28ch;
+  }
+}
+.banner-frame--stage .banner-nav-btn {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  padding: 0.42rem;
+}
+.banner-frame--stage .banner-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.banner-frame--stage .banner-dot {
+  background: rgba(244, 239, 233, 0.38);
+}
+.banner-frame--stage .banner-dot.is-active {
+  background: #f4efe9;
 }
 @media (max-width: 767px) {
   .banner-frame--size-compact {
@@ -882,54 +909,57 @@ a {
     bottom: 0.65rem;
   }
 
-  /* Capa no celular: fotos inteiras lado a lado, texto embaixo. */
+  /* Capa no celular: a foto ocupa a tela e o texto fica sobre ela. */
   .banner-frame--stage {
-    height: auto;
-    min-height: 0;
+    height: min(86svh, 720px);
+    min-height: 560px;
+    background: #241c18;
   }
-  .banner-stage {
-    position: relative;
-    inset: auto;
-    height: auto;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: min(88.9vw, 520px) auto;
+  .banner-editorial {
+    display: block;
+    background: #241c18;
   }
-  .banner-stage-photo {
-    min-height: 0;
-    height: 100%;
+  .banner-editorial-photo {
+    position: absolute;
+    inset: 0;
+    grid-column: auto;
+    grid-row: auto;
   }
-  .banner-stage-photo:first-of-type {
-    grid-column: 1;
-    grid-row: 1;
+  .banner-editorial-copy {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: flex-end;
+    padding: 5.2rem 1.2rem 2.5rem;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(20, 14, 10, 0.15) 28%,
+      rgba(20, 14, 10, 0.82) 100%
+    );
   }
-  .banner-stage-photo:last-of-type {
-    grid-column: 2;
-    grid-row: 1;
+  .banner-editorial-kicker {
+    margin-bottom: 0.4rem;
+    font-size: 0.64rem;
   }
-  .banner-stage-copy {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    padding: 0.95rem 1.15rem 2.35rem;
+  .banner-editorial-title {
+    max-width: 11ch;
+    font-size: clamp(2.05rem, 8vw, 2.7rem);
   }
-  .banner-stage-copy .hero-kicker {
-    margin-bottom: 0.35rem;
-    font-size: 0.68rem;
-    letter-spacing: 0.18em;
+  .banner-editorial-sub {
+    max-width: 32ch;
+    margin-top: 0.45rem;
+    font-size: 0.88rem;
   }
-  .banner-stage-title {
-    max-width: 16ch;
-    font-size: clamp(1.65rem, 6.4vw, 2.05rem);
-  }
-  .banner-stage-sub {
-    max-width: 34ch;
-    margin-top: 0.4rem;
-    font-size: 0.84rem;
-  }
-  .banner-stage-copy .banner-studio-cta {
-    margin-top: 0.75rem;
+  .banner-editorial-cta {
+    margin-top: 0.85rem;
   }
   .banner-frame--stage .banner-nav-btn {
-    top: calc(min(88.9vw, 520px) / 2);
+    top: 42%;
   }
 
   .banner-frame--studio .banner-studio-grid,
