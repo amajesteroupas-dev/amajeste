@@ -655,10 +655,14 @@ export function BannerCarousel({ banners }: Props) {
         )}
 
         {layout === "stage" && !cleanVideoStage && (
-          <div className="banner-editorial">
-            <div className="banner-editorial-photo">
+            <div className="banner-editorial">
+              <p className="banner-editorial-mark" aria-hidden="true">
+                Majesté
+              </p>
+              <div className="banner-editorial-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
+                className="banner-editorial-subject"
                 src={mediaSrc(b.imageUrl)}
                 alt=""
               />

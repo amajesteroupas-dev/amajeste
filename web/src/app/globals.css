@@ -781,41 +781,41 @@ a {
 .banner-frame--stage {
   height: 100svh;
   min-height: 640px;
-  max-height: 920px;
-  background: #241c18;
+  max-height: 900px;
+  background: #1c1612;
 }
 .banner-editorial {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);
-  height: 100%;
-  background: #241c18;
+  background: #1c1612;
+}
+.banner-editorial-mark {
+  display: none;
 }
 .banner-editorial-photo {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
-  overflow: hidden;
-  background: #241c18;
+  position: absolute;
+  inset: 0;
 }
-.banner-editorial-photo img {
-  width: 100%;
+.banner-editorial-subject {
+  position: absolute;
+  top: 0;
+  right: 0;
   height: 100%;
-  object-fit: cover;
-  object-position: center top;
+  width: auto;
+  max-width: none;
 }
 .banner-editorial-copy {
-  grid-column: 1;
-  grid-row: 1;
+  position: absolute;
   z-index: 2;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(58%, 760px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 2.8rem 7% 3.4rem 8%;
-  background:
-    radial-gradient(ellipse 70% 55% at 100% 80%, rgba(198, 165, 106, 0.14), transparent 62%),
-    #241c18;
+  padding: 3rem 5vw 3.4rem 4vw;
+  background: transparent;
 }
 .banner-editorial-stack {
   display: contents;
@@ -849,6 +849,27 @@ a {
   margin-top: 1.6rem;
 }
 @media (min-width: 768px) {
+  .banner-editorial-mark {
+    display: block;
+    position: absolute;
+    z-index: 0;
+    left: -1vw;
+    top: 50%;
+    margin: 0;
+    transform: translateY(-52%);
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(8rem, 15vw, 17rem);
+    line-height: 0.78;
+    letter-spacing: -0.045em;
+    color: rgba(244, 239, 233, 0.07);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+  }
+  .banner-editorial-photo {
+    z-index: 1;
+  }
   .banner-editorial-copy {
     align-items: flex-end;
     text-align: left !important;
@@ -857,16 +878,23 @@ a {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    position: relative;
+    z-index: 1;
   }
   .banner-editorial-title {
-    max-width: 7ch;
-    font-size: clamp(3.6rem, 5.4vw, 6.4rem) !important;
+    max-width: 8ch;
+    font-size: clamp(4.2rem, 6vw, 6.8rem) !important;
     line-height: 0.84 !important;
   }
   .banner-editorial-sub {
-    max-width: 26ch;
-    font-size: 0.95rem !important;
-    letter-spacing: 0.06em !important;
+    max-width: 32ch;
+    font-size: 1rem !important;
+    letter-spacing: 0.02em !important;
+  }
+  .banner-frame--stage .banner-dots {
+    left: 4vw;
+    right: auto;
+    width: max-content;
   }
 }
 .banner-frame--stage .banner-nav-btn {
@@ -936,11 +964,19 @@ a {
   .banner-editorial-photo {
     position: absolute;
     inset: 0;
-    grid-column: auto;
-    grid-row: auto;
+    z-index: 1;
   }
-  .banner-editorial-photo img {
+  .banner-editorial-subject {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    right: auto;
+    object-fit: cover;
     object-position: center 18%;
+  }
+  .banner-editorial-mark {
+    display: none;
   }
   .banner-editorial-copy {
     position: absolute;
@@ -948,8 +984,7 @@ a {
     right: 0;
     bottom: 0;
     top: auto;
-    grid-column: auto;
-    grid-row: auto;
+    width: auto;
     justify-content: flex-end;
     padding: 5.2rem 1.2rem 2.5rem;
     background: linear-gradient(
