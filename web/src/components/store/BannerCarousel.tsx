@@ -664,6 +664,7 @@ export function BannerCarousel({ banners }: Props) {
               />
             </div>
             <div className={`banner-editorial-copy ${align}`}>
+              <div className="banner-editorial-stack">
               {b.tagline?.trim() ? (
                 <p className="banner-editorial-kicker" style={taglineCss}>
                   {renderLayerText(taglineLayer, b.tagline)}
@@ -700,6 +701,7 @@ export function BannerCarousel({ banners }: Props) {
                   </Link>
                 </div>
               ) : null}
+              </div>
             </div>
           </div>
         )}
