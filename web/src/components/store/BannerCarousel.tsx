@@ -661,7 +661,6 @@ export function BannerCarousel({ banners }: Props) {
               <img
                 src={mediaSrc(b.imageUrl)}
                 alt=""
-                style={{ objectPosition: `center ${b.focalY ?? 18}%` }}
               />
             </div>
             <div className={`banner-editorial-copy ${align}`}>
