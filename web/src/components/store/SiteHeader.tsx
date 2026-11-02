@@ -10,6 +10,7 @@ import { BrandLogo } from "@/components/store/BrandLogo";
 import { AccountNavLink } from "@/components/store/AccountNavLink";
 
 const NAV = [
+  { href: "/categoria/black-friday", label: "Black Friday" },
   { href: "/categoria/conjunto-legging", label: "Conjunto Legging" },
   { href: "/categoria/conjunto-short", label: "Conjunto Short" },
   { href: "/categoria/macacao", label: "Macacão" },
@@ -48,7 +49,7 @@ export function SiteHeader() {
           <BrandLogo size="lg" className="hidden md:inline-flex" />
         </Link>
 
-        <nav className="hidden lg:flex flex-1 items-center justify-center gap-x-3 xl:gap-x-4 min-w-0">
+        <nav className="hidden lg:flex flex-1 items-center justify-center gap-x-2 xl:gap-x-3 min-w-0">
           {NAV.map((item) => (
             <Link
               key={item.href}

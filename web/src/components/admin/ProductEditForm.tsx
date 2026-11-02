@@ -958,24 +958,23 @@ export function ProductEditForm({
               )}
             </label>
             <div className="md:col-span-2 space-y-2">
+              <button
+                type="button"
+                className={`btn w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none ${
+                  alsoBlackFriday ? "btn-primary" : "btn-outline"
+                }`}
+                disabled={discountPercent <= 0 && !alsoBlackFriday}
+                onClick={() => setAlsoBlackFriday((v) => !v)}
+              >
+                {alsoBlackFriday
+                  ? "Na Black Friday — clique para remover"
+                  : "Mostrar também na Black Friday"}
+              </button>
               {discountPercent > 0 || alsoBlackFriday ? (
-                <>
-                  <button
-                    type="button"
-                    className={`btn w-full sm:w-auto ${
-                      alsoBlackFriday ? "btn-primary" : "btn-outline"
-                    }`}
-                    onClick={() => setAlsoBlackFriday((v) => !v)}
-                  >
-                    {alsoBlackFriday
-                      ? "Na Black Friday — clique para remover"
-                      : "Mostrar também na Black Friday"}
-                  </button>
-                  <p className="text-[11px] text-muted normal-case tracking-normal">
-                    A categoria principal ({categoryOptions.find((c) => c.id === categoryId)?.label || "atual"}) não muda.
-                    O produto só passa a aparecer também em Black Friday.
-                  </p>
-                </>
+                <p className="text-[11px] text-muted normal-case tracking-normal">
+                  A categoria principal ({categoryOptions.find((c) => c.id === categoryId)?.label || "atual"}) não muda.
+                  O produto só passa a aparecer também em Black Friday.
+                </p>
               ) : (
                 <p className="text-[11px] text-muted normal-case tracking-normal">
                   Coloque um desconto acima de 0% para liberar o botão de incluir
