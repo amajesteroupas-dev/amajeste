@@ -779,18 +779,20 @@ a {
   height: clamp(480px, 62vw, 720px);
 }
 .banner-frame--stage {
-  height: 100svh;
-  min-height: 640px;
-  max-height: 900px;
-  background: #1c1612;
+  height: min(92svh, 860px);
+  min-height: 580px;
+  background: #1a1410;
 }
 .banner-editorial {
   position: absolute;
   inset: 0;
-  background: #1c1612;
+  overflow: hidden;
+  background: #1a1410;
 }
-.banner-editorial-mark {
-  display: none;
+.banner-editorial-mark,
+.banner-editorial-wash,
+.banner-editorial-veil {
+  display: none !important;
 }
 .banner-editorial-photo {
   position: absolute;
@@ -806,15 +808,15 @@ a {
 }
 .banner-editorial-copy {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   left: 0;
   top: 0;
   bottom: 0;
-  width: min(58%, 760px);
+  width: min(50%, 560px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 3rem 5vw 3.4rem 4vw;
+  padding: 3rem 4vw 3.4rem 5vw;
   background: transparent;
 }
 .banner-editorial-stack {
@@ -849,50 +851,73 @@ a {
   margin-top: 1.6rem;
 }
 @media (min-width: 768px) {
-  .banner-editorial-mark {
-    display: block;
-    position: absolute;
-    z-index: 0;
-    left: -1vw;
-    top: 50%;
-    margin: 0;
-    transform: translateY(-52%);
-    font-family: var(--font-display), Georgia, serif;
-    font-weight: 500;
-    font-size: clamp(8rem, 15vw, 17rem);
-    line-height: 0.78;
-    letter-spacing: -0.045em;
-    color: rgba(244, 239, 233, 0.07);
-    white-space: nowrap;
-    pointer-events: none;
-    user-select: none;
+  .banner-editorial {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    align-items: stretch;
+    height: 100%;
+    min-height: 0;
+    background:
+      radial-gradient(
+        ellipse 55% 80% at 12% 70%,
+        rgba(198, 165, 106, 0.12),
+        transparent 62%
+      ),
+      #1a1410;
   }
   .banner-editorial-photo {
-    z-index: 1;
+    position: relative;
+    inset: auto;
+    grid-column: 2;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    width: auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: stretch;
+    overflow: hidden;
+    background: #1a1410;
+  }
+  .banner-editorial-subject {
+    position: relative;
+    top: auto;
+    right: auto;
+    display: block;
+    height: 100%;
+    width: auto;
+    max-height: 100%;
   }
   .banner-editorial-copy {
+    position: relative;
+    inset: auto;
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    height: 100%;
     align-items: flex-end;
     text-align: left !important;
+    padding: 2.4rem clamp(1.2rem, 2.4vw, 2.2rem) 2.8rem clamp(1.6rem, 4vw, 3.5rem);
+    background: transparent;
   }
   .banner-editorial-stack {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    position: relative;
-    z-index: 1;
+    max-width: 16rem;
+    margin-right: clamp(0.5rem, 1.5vw, 1.4rem);
   }
   .banner-editorial-title {
-    max-width: 8ch;
-    font-size: clamp(4.2rem, 6vw, 6.8rem) !important;
-    line-height: 0.84 !important;
+    max-width: 9ch;
+    font-size: clamp(3.4rem, 5vw, 5.8rem) !important;
+    line-height: 0.88 !important;
   }
   .banner-editorial-sub {
-    max-width: 32ch;
-    font-size: 1rem !important;
-    letter-spacing: 0.02em !important;
+    max-width: 24ch;
+    font-size: 0.96rem !important;
   }
   .banner-frame--stage .banner-dots {
-    left: 4vw;
+    left: clamp(2rem, 5vw, 4.5rem);
     right: auto;
     width: max-content;
   }
@@ -965,18 +990,17 @@ a {
     position: absolute;
     inset: 0;
     z-index: 1;
+    width: auto;
+    height: auto;
+    display: block;
   }
   .banner-editorial-subject {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    right: auto;
     object-fit: cover;
     object-position: center 18%;
-  }
-  .banner-editorial-mark {
-    display: none;
   }
   .banner-editorial-copy {
     position: absolute;
@@ -985,7 +1009,9 @@ a {
     bottom: 0;
     top: auto;
     width: auto;
+    height: auto;
     justify-content: flex-end;
+    align-items: stretch;
     padding: 5.2rem 1.2rem 2.5rem;
     background: linear-gradient(
       180deg,
@@ -993,6 +1019,9 @@ a {
       rgba(20, 14, 10, 0.15) 28%,
       rgba(20, 14, 10, 0.82) 100%
     );
+  }
+  .banner-editorial-stack {
+    display: contents;
   }
   .banner-editorial-kicker {
     margin-bottom: 0.4rem;

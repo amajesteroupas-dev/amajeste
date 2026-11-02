@@ -655,11 +655,8 @@ export function BannerCarousel({ banners }: Props) {
         )}
 
         {layout === "stage" && !cleanVideoStage && (
-            <div className="banner-editorial">
-              <p className="banner-editorial-mark" aria-hidden="true">
-                Majesté
-              </p>
-              <div className="banner-editorial-photo">
+          <div className="banner-editorial">
+            <div className="banner-editorial-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className="banner-editorial-subject"
@@ -669,42 +666,42 @@ export function BannerCarousel({ banners }: Props) {
             </div>
             <div className={`banner-editorial-copy ${align}`}>
               <div className="banner-editorial-stack">
-              {b.tagline?.trim() ? (
-                <p className="banner-editorial-kicker" style={taglineCss}>
-                  {renderLayerText(taglineLayer, b.tagline)}
-                </p>
-              ) : null}
-              {b.title?.trim() ? (
-                <h1 className="banner-editorial-title" style={titleCss}>
-                  {renderLayerText(titleLayer, b.title)}
-                </h1>
-              ) : null}
-              {b.highlight?.trim() ? (
-                <p className="banner-editorial-sub" style={highlightCss}>
-                  {renderLayerText(highlightLayer, b.highlight)}
-                </p>
-              ) : null}
-              {b.subtitle?.trim() ? (
-                <p className="banner-editorial-sub" style={subCss}>
-                  {renderLayerText(subLayer, b.subtitle)}
-                </p>
-              ) : null}
-              {b.promoText?.trim() ? (
-                <p className="banner-editorial-sub" style={promoCss}>
-                  {renderLayerText(promoLayer, b.promoText)}
-                </p>
-              ) : null}
-              {b.ctaLabel ? (
-                <div className="banner-editorial-cta" data-no-pan>
-                  <Link
-                    href={bannerCtaHref(b.ctaHref)}
-                    className="banner-cta-btn"
-                    style={ctaCss}
-                  >
-                    {renderLayerText(ctaLayer, b.ctaLabel)}
-                  </Link>
-                </div>
-              ) : null}
+                {b.tagline?.trim() ? (
+                  <p className="banner-editorial-kicker" style={taglineCss}>
+                    {renderLayerText(taglineLayer, b.tagline)}
+                  </p>
+                ) : null}
+                {b.title?.trim() ? (
+                  <h1 className="banner-editorial-title" style={titleCss}>
+                    {renderLayerText(titleLayer, b.title)}
+                  </h1>
+                ) : null}
+                {b.highlight?.trim() ? (
+                  <p className="banner-editorial-sub" style={highlightCss}>
+                    {renderLayerText(highlightLayer, b.highlight)}
+                  </p>
+                ) : null}
+                {b.subtitle?.trim() ? (
+                  <p className="banner-editorial-sub" style={subCss}>
+                    {renderLayerText(subLayer, b.subtitle)}
+                  </p>
+                ) : null}
+                {b.promoText?.trim() ? (
+                  <p className="banner-editorial-sub" style={promoCss}>
+                    {renderLayerText(promoLayer, b.promoText)}
+                  </p>
+                ) : null}
+                {b.ctaLabel ? (
+                  <div className="banner-editorial-cta" data-no-pan>
+                    <Link
+                      href={bannerCtaHref(b.ctaHref)}
+                      className="banner-cta-btn"
+                      style={ctaCss}
+                    >
+                      {renderLayerText(ctaLayer, b.ctaLabel)}
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
