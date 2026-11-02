@@ -467,7 +467,9 @@ export function BannerCarousel({ banners }: Props) {
                 background: videoBg,
                 ["--banner-video-bg" as string]: videoBg,
               }
-            : layout === "studio" || layout === "stage"
+            : layout === "stage"
+              ? { background: b.bgColor || "#1a1410" }
+            : layout === "studio"
               ? { background: b.bgColor || "#f0e8df" }
               : layout === "promo"
                 ? { background: b.panelColor || b.bgColor || "#ebe3d8" }
@@ -655,15 +657,22 @@ export function BannerCarousel({ banners }: Props) {
         )}
 
         {layout === "stage" && !cleanVideoStage && (
-          <div className="banner-editorial">
+          <div className="banner-editorial" key={b.id}>
             <div className="banner-editorial-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className="banner-editorial-subject"
                 src={mediaSrc(b.imageUrl)}
                 alt=""
+                style={{
+                  objectPosition: `center ${Math.min(
+                    40,
+                    Math.max(8, Number(b.focalY) || 20)
+                  )}%`,
+                }}
               />
             </div>
+            <div className="banner-editorial-scrim" aria-hidden />
             <div className={`banner-editorial-copy ${align}`}>
               <div className="banner-editorial-stack">
                 {b.tagline?.trim() ? (
@@ -695,7 +704,7 @@ export function BannerCarousel({ banners }: Props) {
                   <div className="banner-editorial-cta" data-no-pan>
                     <Link
                       href={bannerCtaHref(b.ctaHref)}
-                      className="banner-cta-btn"
+                      className="banner-cta-btn banner-editorial-cta-btn"
                       style={ctaCss}
                     >
                       {renderLayerText(ctaLayer, b.ctaLabel)}

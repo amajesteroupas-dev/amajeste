@@ -778,16 +778,28 @@ a {
 .banner-frame--size-tall {
   height: clamp(480px, 62vw, 720px);
 }
+/* Capas home (layout stage) — campanha editorial premium */
 .banner-frame--stage {
-  height: min(92svh, 860px);
-  min-height: 580px;
-  background: #1a1410;
+  height: min(86svh, 820px);
+  min-height: 560px;
+  background: #140f0c;
+}
+@keyframes banner-editorial-in {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .banner-editorial {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #1a1410;
+  background: #140f0c;
+  animation: banner-editorial-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .banner-editorial-mark,
 .banner-editorial-wash,
@@ -797,146 +809,167 @@ a {
 .banner-editorial-photo {
   position: absolute;
   inset: 0;
+  z-index: 0;
 }
 .banner-editorial-subject {
   position: absolute;
-  top: 0;
-  right: 0;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  width: auto;
-  max-width: none;
+  object-fit: cover;
+  object-position: center 20%;
+  transform: scale(1.01);
+}
+.banner-editorial-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      105deg,
+      rgba(16, 11, 9, 0.88) 0%,
+      rgba(16, 11, 9, 0.62) 26%,
+      rgba(16, 11, 9, 0.28) 46%,
+      rgba(16, 11, 9, 0.06) 62%,
+      transparent 74%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(16, 11, 9, 0.28) 0%,
+      transparent 18%,
+      transparent 62%,
+      rgba(16, 11, 9, 0.45) 100%
+    );
 }
 .banner-editorial-copy {
   position: absolute;
-  z-index: 3;
+  z-index: 2;
   left: 0;
   top: 0;
   bottom: 0;
-  width: min(50%, 560px);
+  width: min(46%, 560px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 3rem 4vw 3.4rem 5vw;
+  align-items: flex-start;
+  padding: 3rem clamp(1.6rem, 4vw, 4.5rem) 3.4rem;
   background: transparent;
+  text-align: left !important;
 }
 .banner-editorial-stack {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 18rem;
 }
 .banner-editorial-kicker {
-  margin: 0 0 0.85rem;
-  font-size: 0.72rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.38em;
   text-transform: uppercase;
   color: #c6a56a;
 }
 .banner-editorial-title {
   margin: 0;
-  max-width: 9ch;
+  max-width: 10ch;
   font-family: var(--font-display), Georgia, serif;
   font-weight: 500;
-  font-size: clamp(2.8rem, 4.6vw, 4.6rem);
-  line-height: 0.92;
-  letter-spacing: -0.02em;
-  color: #f4efe9;
+  font-size: clamp(2.9rem, 5.2vw, 5.6rem);
+  line-height: 0.9;
+  letter-spacing: -0.025em;
+  color: #f7f1ea;
+  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
 }
 .banner-editorial-sub {
-  margin: 1rem 0 0;
+  margin: 1.05rem 0 0;
   max-width: 28ch;
-  font-size: 1rem;
+  font-size: 0.98rem;
   line-height: 1.5;
-  color: rgba(244, 239, 233, 0.78);
+  color: rgba(247, 241, 234, 0.82);
 }
 .banner-editorial-cta {
-  margin-top: 1.6rem;
+  margin-top: 1.55rem;
+}
+.banner-frame--stage .banner-editorial-cta-btn {
+  min-height: 2.7rem;
+  padding: 0.78rem 1.35rem !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(247, 241, 234, 0.88) !important;
+  background: transparent !important;
+  color: #f7f1ea !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  backdrop-filter: blur(2px);
+  transition:
+    background 0.28s ease,
+    color 0.28s ease,
+    border-color 0.28s ease,
+    transform 0.28s ease !important;
+}
+.banner-frame--stage .banner-editorial-cta-btn:hover {
+  background: #f7f1ea !important;
+  color: #1a1410 !important;
+  border-color: #f7f1ea !important;
+  filter: none !important;
+}
+.banner-frame--stage .banner-nav-btn {
+  background: rgba(20, 14, 10, 0.28);
+  color: #f7f1ea;
+  border: 1px solid rgba(247, 241, 234, 0.34);
+  border-radius: 999px;
+  padding: 0.5rem;
+  backdrop-filter: blur(8px);
+}
+.banner-frame--stage .banner-nav-btn:hover {
+  background: rgba(20, 14, 10, 0.5);
+  border-color: rgba(247, 241, 234, 0.7);
+}
+.banner-frame--stage .banner-dots {
+  bottom: 1.15rem;
+  gap: 0.4rem;
+}
+.banner-frame--stage .banner-dot {
+  width: 1.35rem;
+  height: 2px;
+  border-radius: 0;
+  background: rgba(247, 241, 234, 0.32);
+  transition: background 0.25s ease, width 0.25s ease;
+}
+.banner-frame--stage .banner-dot.is-active {
+  width: 2rem;
+  background: #f7f1ea;
 }
 @media (min-width: 768px) {
-  .banner-editorial {
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) auto;
-    align-items: stretch;
-    height: 100%;
-    min-height: 0;
-    background:
-      radial-gradient(
-        ellipse 55% 80% at 12% 70%,
-        rgba(198, 165, 106, 0.12),
-        transparent 62%
-      ),
-      #1a1410;
-  }
-  .banner-editorial-photo {
-    position: relative;
-    inset: auto;
-    grid-column: 2;
-    grid-row: 1;
-    height: 100%;
-    min-height: 0;
-    width: auto;
-    display: flex;
-    justify-content: flex-end;
-    align-items: stretch;
-    overflow: hidden;
-    background: #1a1410;
-  }
-  .banner-editorial-subject {
-    position: relative;
-    top: auto;
-    right: auto;
-    display: block;
-    height: 100%;
-    width: auto;
-    max-height: 100%;
-  }
   .banner-editorial-copy {
-    position: relative;
-    inset: auto;
-    grid-column: 1;
-    grid-row: 1;
-    width: auto;
-    height: 100%;
-    align-items: flex-end;
-    text-align: left !important;
-    padding: 2.4rem clamp(1.2rem, 2.4vw, 2.2rem) 2.8rem clamp(1.6rem, 4vw, 3.5rem);
-    background: transparent;
+    width: min(44%, 580px);
+    padding: 3.2rem clamp(2rem, 5vw, 5.5rem) 3.6rem;
   }
   .banner-editorial-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 16rem;
-    margin-right: clamp(0.5rem, 1.5vw, 1.4rem);
+    max-width: 20rem;
   }
   .banner-editorial-title {
-    max-width: 9ch;
-    font-size: clamp(3.4rem, 5vw, 5.8rem) !important;
+    font-size: clamp(3.4rem, 5.4vw, 6rem) !important;
     line-height: 0.88 !important;
   }
   .banner-editorial-sub {
-    max-width: 24ch;
-    font-size: 0.96rem !important;
+    max-width: 30ch;
+    font-size: 1.02rem !important;
   }
   .banner-frame--stage .banner-dots {
-    left: clamp(2rem, 5vw, 4.5rem);
+    left: clamp(2rem, 5vw, 5.5rem);
     right: auto;
     width: max-content;
+    justify-content: flex-start;
   }
 }
-.banner-frame--stage .banner-nav-btn {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 999px;
-  padding: 0.42rem;
-}
-.banner-frame--stage .banner-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
-}
-.banner-frame--stage .banner-dot {
-  background: rgba(244, 239, 233, 0.38);
-}
-.banner-frame--stage .banner-dot.is-active {
-  background: #f4efe9;
+@media (min-width: 1200px) {
+  .banner-editorial-subject {
+    object-position: center 16%;
+  }
 }
 @media (max-width: 767px) {
   .banner-frame--size-compact {
@@ -976,23 +1009,20 @@ a {
     bottom: 0.65rem;
   }
 
-  /* Capa no celular: a foto ocupa a tela e o texto fica sobre ela. */
+  /* Capa no celular: foto full-bleed + texto na base. */
   .banner-frame--stage {
-    height: min(86svh, 720px);
+    height: min(88svh, 740px);
     min-height: 560px;
-    background: #241c18;
+    background: #140f0c;
   }
   .banner-editorial {
     display: block;
-    background: #241c18;
+    background: #140f0c;
   }
   .banner-editorial-photo {
     position: absolute;
     inset: 0;
-    z-index: 1;
-    width: auto;
-    height: auto;
-    display: block;
+    z-index: 0;
   }
   .banner-editorial-subject {
     position: absolute;
@@ -1001,6 +1031,17 @@ a {
     height: 100%;
     object-fit: cover;
     object-position: center 18%;
+    transform: none;
+  }
+  .banner-editorial-scrim {
+    background: linear-gradient(
+      180deg,
+      rgba(16, 11, 9, 0.18) 0%,
+      transparent 28%,
+      transparent 46%,
+      rgba(16, 11, 9, 0.55) 72%,
+      rgba(16, 11, 9, 0.9) 100%
+    );
   }
   .banner-editorial-copy {
     position: absolute;
@@ -1012,35 +1053,42 @@ a {
     height: auto;
     justify-content: flex-end;
     align-items: stretch;
-    padding: 5.2rem 1.2rem 2.5rem;
-    background: linear-gradient(
-      180deg,
-      transparent 0%,
-      rgba(20, 14, 10, 0.15) 28%,
-      rgba(20, 14, 10, 0.82) 100%
-    );
+    padding: 5.5rem 1.25rem 2.6rem;
+    background: transparent;
   }
   .banner-editorial-stack {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: none;
+    width: 100%;
   }
   .banner-editorial-kicker {
-    margin-bottom: 0.4rem;
-    font-size: 0.64rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.32em;
   }
   .banner-editorial-title {
-    max-width: 11ch;
-    font-size: clamp(2.05rem, 8vw, 2.7rem);
+    max-width: 12ch;
+    font-size: clamp(2.15rem, 8.4vw, 2.85rem) !important;
+    line-height: 0.92 !important;
   }
   .banner-editorial-sub {
-    max-width: 32ch;
-    margin-top: 0.45rem;
-    font-size: 0.88rem;
+    max-width: 34ch;
+    margin-top: 0.5rem;
+    font-size: 0.9rem !important;
   }
   .banner-editorial-cta {
-    margin-top: 0.85rem;
+    margin-top: 0.95rem;
   }
   .banner-frame--stage .banner-nav-btn {
-    top: 42%;
+    top: 40%;
+  }
+  .banner-frame--stage .banner-dots {
+    left: 0;
+    right: 0;
+    width: auto;
+    justify-content: center;
   }
 
   .banner-frame--studio .banner-studio-grid,
