@@ -99,6 +99,9 @@ export function ProductEditForm({
     }
     return 0;
   });
+  const [extraCategoryIds, setExtraCategoryIds] = useState<string[]>(
+    () => product.extraCategoryIds || []
+  );
   const [alsoBlackFriday, setAlsoBlackFriday] = useState(() => {
     const bf = initialCategories.find(
       (c) =>
@@ -244,15 +247,15 @@ export function ProductEditForm({
     e.preventDefault();
     const form = new FormData(e.currentTarget);
 
-    let extraCategoryIds = [...(product.extraCategoryIds || [])];
+    let nextExtraIds = [...extraCategoryIds];
     const currentBf = findBlackFridayCategory(categories);
     if (currentBf) {
-      extraCategoryIds = extraCategoryIds.filter((id) => id !== currentBf.id);
+      nextExtraIds = nextExtraIds.filter((id) => id !== currentBf.id);
     }
     if (alsoBlackFriday && discountPercent > 0) {
       try {
         const bf = await ensureBlackFridayCategory();
-        if (!extraCategoryIds.includes(bf.id)) extraCategoryIds.push(bf.id);
+        if (!nextExtraIds.includes(bf.id)) nextExtraIds.push(bf.id);
       } catch (err) {
         setMsg(
           err instanceof Error
@@ -273,7 +276,7 @@ export function ProductEditForm({
           ? Number(compareAt)
           : null,
       categoryId,
-      extraCategoryIds,
+      extraCategoryIds: nextExtraIds,
       featured: form.get("featured") === "on",
       destaque: form.get("destaque") === "on",
       active: form.get("active") === "on",
@@ -324,9 +327,12 @@ export function ProductEditForm({
       return;
     }
     setSaveIssues([]);
+    setExtraCategoryIds(nextExtraIds);
     setMsg(
       payload.active
-        ? "Produto salvo e ativo na loja"
+        ? alsoBlackFriday && discountPercent > 0
+          ? "Produto salvo · também na Black Friday"
+          : "Produto salvo e ativo na loja"
         : "Produto salvo como rascunho (inativo)"
     );
     router.refresh();
@@ -930,7 +936,7 @@ export function ProductEditForm({
             </label>
             <label className="block text-xs uppercase tracking-wider text-muted">
               Desconto (%)
-              <HelpTip text="Para Black Friday: informe o % e o preço atual vira o valor riscado. O preço na loja cai automaticamente." />
+              <HelpTip text="Informe o % de desconto. O preço atual vira o valor riscado e o preço na loja cai. Depois use o botão Black Friday." />
               <input
                 type="number"
                 min={0}
@@ -951,24 +957,32 @@ export function ProductEditForm({
                 </span>
               )}
             </label>
-            {discountPercent > 0 ? (
-              <label className="flex items-start gap-2 text-sm text-[#2a2420] md:col-span-2">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={alsoBlackFriday}
-                  onChange={(e) => setAlsoBlackFriday(e.target.checked)}
-                />
-                <span>
-                  Também mostrar na categoria <strong>Black Friday</strong>
-                  <span className="block text-[11px] text-muted mt-0.5">
-                    Mantém a categoria atual e inclui o produto na vitrine Black
-                    Friday. Se a categoria ainda não existir, ela é criada ao
-                    salvar.
-                  </span>
-                </span>
-              </label>
-            ) : null}
+            <div className="md:col-span-2 space-y-2">
+              {discountPercent > 0 || alsoBlackFriday ? (
+                <>
+                  <button
+                    type="button"
+                    className={`btn w-full sm:w-auto ${
+                      alsoBlackFriday ? "btn-primary" : "btn-outline"
+                    }`}
+                    onClick={() => setAlsoBlackFriday((v) => !v)}
+                  >
+                    {alsoBlackFriday
+                      ? "Na Black Friday — clique para remover"
+                      : "Mostrar também na Black Friday"}
+                  </button>
+                  <p className="text-[11px] text-muted normal-case tracking-normal">
+                    A categoria principal ({categoryOptions.find((c) => c.id === categoryId)?.label || "atual"}) não muda.
+                    O produto só passa a aparecer também em Black Friday.
+                  </p>
+                </>
+              ) : (
+                <p className="text-[11px] text-muted normal-case tracking-normal">
+                  Coloque um desconto acima de 0% para liberar o botão de incluir
+                  o produto na Black Friday (sem tirar da categoria atual).
+                </p>
+              )}
+            </div>
             <label className="block text-xs uppercase tracking-wider text-muted">
               Custo / custo médio (R$) — só admin
               <input
