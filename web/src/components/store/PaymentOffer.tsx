@@ -18,7 +18,7 @@ export type PaymentOfferProps = {
 
 export function PaymentOffer({
   price,
-  pixDiscountPercent = 5,
+  pixDiscountPercent = 0,
   showCardFlags = true,
 }: PaymentOfferProps) {
   const sitePromo = useSitePromo();
@@ -29,7 +29,10 @@ export function PaymentOffer({
     ? promoPrice(price, sitePromo.percent)
     : price;
 
-  const basePixPercent = defaultPayment.pixDiscountPercent || pixDiscountPercent;
+  const basePixPercent =
+    Number(pixDiscountPercent) > 0
+      ? Number(pixDiscountPercent)
+      : defaultPayment.pixDiscountPercent;
   const pixPercent = hasSiteWide
     ? sitePromo.percent
     : sitePromo.pixOfferPercent > 0
@@ -37,7 +40,9 @@ export function PaymentOffer({
       : basePixPercent;
   const pixPrice = hasSiteWide
     ? siteSalePrice
-    : promoPrice(price, pixPercent);
+    : pixPercent > 0
+      ? promoPrice(price, pixPercent)
+      : price;
 
   const listLabel = formatBRL(price);
   const pixLabel = formatBRL(pixPrice);

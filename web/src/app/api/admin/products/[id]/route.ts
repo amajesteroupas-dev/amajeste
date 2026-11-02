@@ -137,6 +137,21 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       costPrice: body.costPrice,
       categoryId: body.categoryId,
       featured: body.featured,
+      ...(body.compareAt !== undefined
+        ? {
+            compareAt:
+              body.compareAt == null || body.compareAt === ""
+                ? null
+                : Number(body.compareAt),
+          }
+        : {}),
+      ...(body.extraCategoryIds !== undefined
+        ? {
+            extraCategoryIds: Array.isArray(body.extraCategoryIds)
+              ? body.extraCategoryIds.map(String).filter(Boolean)
+              : [],
+          }
+        : {}),
       ...(body.destaque !== undefined
         ? { destaque: Boolean(body.destaque) }
         : {}),
@@ -148,7 +163,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         ? { interestFree: Boolean(body.interestFree) }
         : {}),
       ...(body.pixDiscountPercent !== undefined
-        ? { pixDiscountPercent: Number(body.pixDiscountPercent) }
+        ? { pixDiscountPercent: Number(body.pixDiscountPercent) || 0 }
         : {}),
       ...(body.showPaymentFlags !== undefined
         ? { showPaymentFlags: Boolean(body.showPaymentFlags) }

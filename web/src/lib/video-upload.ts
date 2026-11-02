@@ -77,44 +77,121 @@ function runFfmpeg(
   });
 }
 
+const MOBILE_VF =
+  "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p";
+
 /**
- * Converte para MP4 H.264 baseline + AAC — toca no iPhone e Android.
+ * Converte para MP4 H.264 + AAC (áudio opcional) — toca no iPhone e Android.
  * MOV/HEVC (comum em iPhone) não roda na maioria dos Androids.
+ * Tenta várias estratégias: áudio opcional → só vídeo → decode mais tolerante.
  */
 export async function transcodeToMobileMp4(
   inputPath: string,
   outputPath: string
 ) {
-  await runFfmpeg([
-    "-y",
-    "-i",
-    inputPath,
-    "-vf",
-    "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease",
-    "-c:v",
-    "libx264",
-    "-profile:v",
-    "main",
-    "-level",
-    "4.0",
-    "-pix_fmt",
-    "yuv420p",
-    "-preset",
-    "medium",
-    "-crf",
-    "19",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "160k",
-    "-ac",
-    "2",
-    "-ar",
-    "44100",
-    "-movflags",
-    "+faststart",
-    outputPath,
-  ]);
+  const attempts: string[][] = [
+    [
+      "-y",
+      "-fflags",
+      "+genpts",
+      "-i",
+      inputPath,
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-vf",
+      MOBILE_VF,
+      "-c:v",
+      "libx264",
+      "-profile:v",
+      "main",
+      "-level",
+      "4.0",
+      "-pix_fmt",
+      "yuv420p",
+      "-preset",
+      "medium",
+      "-crf",
+      "19",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "160k",
+      "-ac",
+      "2",
+      "-ar",
+      "44100",
+      "-movflags",
+      "+faststart",
+      "-shortest",
+      outputPath,
+    ],
+    [
+      "-y",
+      "-fflags",
+      "+genpts",
+      "-i",
+      inputPath,
+      "-map",
+      "0:v:0",
+      "-vf",
+      MOBILE_VF,
+      "-c:v",
+      "libx264",
+      "-profile:v",
+      "main",
+      "-level",
+      "4.0",
+      "-pix_fmt",
+      "yuv420p",
+      "-preset",
+      "medium",
+      "-crf",
+      "19",
+      "-an",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ],
+    [
+      "-y",
+      "-err_detect",
+      "ignore_err",
+      "-i",
+      inputPath,
+      "-map",
+      "0:v:0",
+      "-vf",
+      MOBILE_VF,
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-preset",
+      "fast",
+      "-crf",
+      "22",
+      "-an",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ],
+  ];
+
+  let lastErr: Error | null = null;
+  for (const args of attempts) {
+    await fs.unlink(outputPath).catch(() => undefined);
+    try {
+      await runFfmpeg(args);
+      const st = await fs.stat(outputPath);
+      if (st.size > 1024) return;
+      lastErr = new Error("Arquivo convertido ficou vazio.");
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+    }
+  }
+  throw lastErr || new Error("Falha ao converter vídeo.");
 }
 
 async function ensureMobileFriendlyMp4(

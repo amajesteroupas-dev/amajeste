@@ -284,7 +284,7 @@ export function ProductPurchase({
             price={price}
             installmentsMax={product.installmentsMax ?? 2}
             interestFree={product.interestFree ?? true}
-            pixDiscountPercent={product.pixDiscountPercent ?? 5}
+            pixDiscountPercent={product.pixDiscountPercent ?? 0}
             showCardFlags={product.showPaymentFlags ?? true}
           />
         </div>

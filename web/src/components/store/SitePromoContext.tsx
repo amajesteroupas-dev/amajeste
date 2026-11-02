@@ -41,7 +41,7 @@ const defaultValue: SitePromoValue = {
   percent: 0,
   endsAt: null,
   label: "",
-  pixPercentIncluded: 5,
+  pixPercentIncluded: 0,
   paymentCopy: { ...DEFAULT_PAYMENT_COPY },
   promotions: [],
   pixOfferPercent: 0,

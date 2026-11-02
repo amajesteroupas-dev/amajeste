@@ -61,6 +61,7 @@ export function instagramUrl() {
 export const defaultPayment = {
   installmentsMax: 2,
   interestFree: true,
-  pixDiscountPercent: 5,
+  /** Desconto Pix global desativado — use preço/desconto no produto. */
+  pixDiscountPercent: 0,
   showCardFlags: true,
 };

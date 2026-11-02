@@ -21,17 +21,14 @@ export type PaymentCopySettings = {
 };
 
 export const DEFAULT_PAYMENT_COPY: PaymentCopySettings = {
-  productCardLine:
-    "{pixPercent}% de desconto no Pix · Não acumulável · {price}",
-  productCardLinePromo:
-    "{percent}% OFF no site · no Pix o desconto de {pixPercent}% já está incluso · {price}",
-  pixHeadline: "{pixPercent}% de desconto comprando no Pix",
-  pixDetail: "Não acumulável com outras promoções",
+  productCardLine: "No Pix · {price}",
+  productCardLinePromo: "{percent}% OFF no site · {price}",
+  pixHeadline: "Pague no Pix",
+  pixDetail: "Pagamento instantâneo e seguro",
   pixHeadlinePromo: "{percent}% de desconto em todo o site",
-  pixDetailPromo:
-    "No Pix o desconto de {pixPercent}% já está incluso · Não acumulável",
+  pixDetailPromo: "Válido também no Pix · Não acumulável com cupons",
   footerPaymentLine:
-    "Ganhe 5% de desconto no Pix. Não acumulável com outras promoções. Pagamentos processados com segurança.",
+    "Aceitamos Pix e cartão. Pagamentos processados com segurança.",
 };
 
 export type PaymentCopyVars = {

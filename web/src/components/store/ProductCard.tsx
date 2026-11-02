@@ -102,7 +102,7 @@ export function ProductCard({
   const listPrice = Number(price);
   const siteWideOn = sitePromo.active && sitePromo.percent > 0;
   const basePixPercent =
-    sitePromo.pixOfferPercent > 0 ? sitePromo.pixOfferPercent : 5;
+    sitePromo.pixOfferPercent > 0 ? sitePromo.pixOfferPercent : 0;
   const displayPercent = siteWideOn
     ? sitePromo.percent
     : Math.max(sitePromo.card1xOfferPercent, 0);
@@ -119,7 +119,9 @@ export function ProductCard({
 
   const pixPrice = siteWideOn
     ? promoPrice(listPrice, sitePromo.percent)
-    : promoPrice(listPrice, basePixPercent);
+    : basePixPercent > 0
+      ? promoPrice(listPrice, basePixPercent)
+      : listPrice;
   const listLabel = formatBRL(listPrice);
   const pixLabel = formatBRL(pixPrice);
 

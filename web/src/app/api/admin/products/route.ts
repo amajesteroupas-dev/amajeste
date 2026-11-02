@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     colors,
     installmentsMax = 2,
     interestFree = true,
-    pixDiscountPercent = 5,
+    pixDiscountPercent = 0,
     showPaymentFlags = true,
     sizeGuide = "mg",
     weightKg = null,

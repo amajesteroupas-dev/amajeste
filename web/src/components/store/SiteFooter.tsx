@@ -41,7 +41,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
   const sitePromo = useSitePromo();
   const paymentCopy = fillPaymentCopy(sitePromo.paymentCopy.footerPaymentLine, {
-    percent: sitePromo.active ? sitePromo.percent : 5,
+    percent: sitePromo.active ? sitePromo.percent : 0,
     pixPercent: sitePromo.pixPercentIncluded,
   });
 

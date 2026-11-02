@@ -187,11 +187,52 @@ export async function downloadSocialVideo(
           );
           videoName = "video.mp4";
         } catch {
-          await runCommand(
-            "ffmpeg",
-            ["-y", "-i", src, "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", dest],
-            { timeoutMs: 180_000 }
-          );
+          try {
+            await runCommand(
+              "ffmpeg",
+              [
+                "-y",
+                "-fflags",
+                "+genpts",
+                "-i",
+                src,
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a:0?",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                "-movflags",
+                "+faststart",
+                dest,
+              ],
+              { timeoutMs: 180_000 }
+            );
+          } catch {
+            await runCommand(
+              "ffmpeg",
+              [
+                "-y",
+                "-i",
+                src,
+                "-map",
+                "0:v:0",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-an",
+                "-movflags",
+                "+faststart",
+                dest,
+              ],
+              { timeoutMs: 180_000 }
+            );
+          }
           videoName = "video.mp4";
         }
       }

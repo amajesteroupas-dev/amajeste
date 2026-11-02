@@ -73,8 +73,25 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         })
       : [];
 
+  const showcaseProducts = await prisma.product.findMany({
+    where: {
+      active: true,
+      deletedAt: null,
+      extraCategoryIds: { has: category.id },
+    },
+    include: {
+      images: { orderBy: { sortOrder: "asc" } },
+      variants: { where: { active: true } },
+      category: { select: { priceAdjustPercent: true } },
+    },
+    orderBy: { name: "asc" },
+  });
+
   const productMap = new Map(
-    [...category.products, ...childProducts].map((p) => [p.id, p])
+    [...category.products, ...childProducts, ...showcaseProducts].map((p) => [
+      p.id,
+      p,
+    ])
   );
 
   const allProducts = [...productMap.values()].map((p) => ({

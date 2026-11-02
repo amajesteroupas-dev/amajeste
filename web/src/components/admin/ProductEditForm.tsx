@@ -32,7 +32,9 @@ type Props = {
     description: string;
     price: number;
     costPrice: number;
+    compareAt: number | null;
     categoryId: string;
+    extraCategoryIds: string[];
     featured: boolean;
     destaque: boolean;
     active: boolean;
@@ -47,7 +49,12 @@ type Props = {
     videoUrl: string | null;
     sizeGuide?: string | null;
   };
-  categories: { id: string; name: string; parentId?: string | null }[];
+  categories: {
+    id: string;
+    name: string;
+    slug?: string | null;
+    parentId?: string | null;
+  }[];
   variants: {
     id: string;
     sku: string;
@@ -80,6 +87,27 @@ export function ProductEditForm({
   const [categories, setCategories] = useState(initialCategories);
   const [categoryId, setCategoryId] = useState(product.categoryId);
   const [price, setPrice] = useState(product.price);
+  const [compareAt, setCompareAt] = useState<number | null>(
+    product.compareAt != null && Number(product.compareAt) > 0
+      ? Number(product.compareAt)
+      : null
+  );
+  const [discountPercent, setDiscountPercent] = useState(() => {
+    const base = product.compareAt != null ? Number(product.compareAt) : 0;
+    if (base > product.price && product.price > 0) {
+      return Math.round((1 - product.price / base) * 100);
+    }
+    return 0;
+  });
+  const [alsoBlackFriday, setAlsoBlackFriday] = useState(() => {
+    const bf = initialCategories.find(
+      (c) =>
+        c.slug === "black-friday" ||
+        /black\s*friday/i.test(c.name) ||
+        /blackfriday/i.test(c.name)
+    );
+    return Boolean(bf && product.extraCategoryIds?.includes(bf.id));
+  });
   const [activeChecked, setActiveChecked] = useState(product.active);
   const [weightKg, setWeightKg] = useState(product.weightKg ?? 0.4);
   const [lengthCm, setLengthCm] = useState(product.lengthCm ?? 30);
@@ -161,21 +189,97 @@ export function ProductEditForm({
     })();
   }, []);
 
+  function findBlackFridayCategory(
+    list: { id: string; name: string; slug?: string | null }[]
+  ) {
+    return list.find(
+      (c) =>
+        c.slug === "black-friday" ||
+        /black\s*friday/i.test(c.name) ||
+        /blackfriday/i.test(c.name)
+    );
+  }
+
+  function applyDiscountPercent(raw: number) {
+    const pct = Math.min(90, Math.max(0, Math.round(Number(raw) || 0)));
+    setDiscountPercent(pct);
+    if (pct <= 0) {
+      if (compareAt != null && compareAt > 0) {
+        setPrice(Number(compareAt.toFixed(2)));
+        setCompareAt(null);
+      }
+      setAlsoBlackFriday(false);
+      return;
+    }
+    const base =
+      compareAt != null && compareAt > 0 ? compareAt : Number(price) || 0;
+    if (base <= 0) return;
+    if (compareAt == null || compareAt <= 0) setCompareAt(base);
+    setPrice(Math.round(base * (1 - pct / 100) * 100) / 100);
+  }
+
+  async function ensureBlackFridayCategory() {
+    const existing = findBlackFridayCategory(categories);
+    if (existing) return existing;
+    const res = await fetch("/api/admin/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Black Friday" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Não foi possível criar Black Friday");
+    }
+    const created = {
+      id: String(data.id),
+      name: String(data.name || "Black Friday"),
+      slug: String(data.slug || "black-friday"),
+      parentId: data.parentId ?? null,
+    };
+    setCategories((prev) => [...prev, created]);
+    return created;
+  }
+
   async function saveProduct(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+
+    let extraCategoryIds = [...(product.extraCategoryIds || [])];
+    const currentBf = findBlackFridayCategory(categories);
+    if (currentBf) {
+      extraCategoryIds = extraCategoryIds.filter((id) => id !== currentBf.id);
+    }
+    if (alsoBlackFriday && discountPercent > 0) {
+      try {
+        const bf = await ensureBlackFridayCategory();
+        if (!extraCategoryIds.includes(bf.id)) extraCategoryIds.push(bf.id);
+      } catch (err) {
+        setMsg(
+          err instanceof Error
+            ? err.message
+            : "Erro ao vincular Black Friday"
+        );
+        return;
+      }
+    }
+
     const payload = {
       name: form.get("name"),
       description: form.get("description"),
       price: Number(form.get("price")),
       costPrice: Number(form.get("costPrice")),
+      compareAt:
+        compareAt != null && compareAt > Number(form.get("price") || 0)
+          ? Number(compareAt)
+          : null,
       categoryId,
+      extraCategoryIds,
       featured: form.get("featured") === "on",
       destaque: form.get("destaque") === "on",
       active: form.get("active") === "on",
       installmentsMax: Number(form.get("installmentsMax") || 2),
       interestFree: form.get("interestFree") === "on",
-      pixDiscountPercent: Number(form.get("pixDiscountPercent") || 0),
+      pixDiscountPercent: 0,
       showPaymentFlags: form.get("showPaymentFlags") === "on",
       weightKg: Number(form.get("weightKg") || 0) || null,
       lengthCm: Number(form.get("lengthCm") || 0) || null,
@@ -245,7 +349,12 @@ export function ProductEditForm({
     }
     setCategories((prev) => [
       ...prev,
-      { id: data.id, name: data.name, parentId: data.parentId ?? null },
+      {
+        id: data.id,
+        name: data.name,
+        slug: data.slug || null,
+        parentId: data.parentId ?? null,
+      },
     ]);
     setCategoryId(data.id);
     setNewCat("");
@@ -797,16 +906,69 @@ export function ProductEditForm({
             </div>
 
             <label className="block text-xs uppercase tracking-wider text-muted">
-              Preço (R$)
+              Preço na loja (R$)
               <input
                 name="price"
                 type="number"
                 step="0.01"
                 value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setPrice(next);
+                  if (compareAt != null && compareAt > next && next > 0) {
+                    setDiscountPercent(
+                      Math.round((1 - next / compareAt) * 100)
+                    );
+                  } else if (compareAt == null || compareAt <= next) {
+                    setDiscountPercent(0);
+                    setCompareAt(null);
+                    setAlsoBlackFriday(false);
+                  }
+                }}
                 className="input mt-1"
               />
             </label>
+            <label className="block text-xs uppercase tracking-wider text-muted">
+              Desconto (%)
+              <HelpTip text="Para Black Friday: informe o % e o preço atual vira o valor riscado. O preço na loja cai automaticamente." />
+              <input
+                type="number"
+                min={0}
+                max={90}
+                step={1}
+                value={discountPercent}
+                onChange={(e) => applyDiscountPercent(Number(e.target.value))}
+                className="input mt-1"
+              />
+              {compareAt != null && compareAt > price ? (
+                <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
+                  De R$ {compareAt.toFixed(2).replace(".", ",")} por R${" "}
+                  {Number(price).toFixed(2).replace(".", ",")}
+                </span>
+              ) : (
+                <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
+                  0 = sem promoção neste produto.
+                </span>
+              )}
+            </label>
+            {discountPercent > 0 ? (
+              <label className="flex items-start gap-2 text-sm text-[#2a2420] md:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={alsoBlackFriday}
+                  onChange={(e) => setAlsoBlackFriday(e.target.checked)}
+                />
+                <span>
+                  Também mostrar na categoria <strong>Black Friday</strong>
+                  <span className="block text-[11px] text-muted mt-0.5">
+                    Mantém a categoria atual e inclui o produto na vitrine Black
+                    Friday. Se a categoria ainda não existir, ela é criada ao
+                    salvar.
+                  </span>
+                </span>
+              </label>
+            ) : null}
             <label className="block text-xs uppercase tracking-wider text-muted">
               Custo / custo médio (R$) — só admin
               <input
@@ -1005,8 +1167,13 @@ export function ProductEditForm({
         <AdminCollapse
           title="Pagamento e descontos"
           defaultOpen={false}
-          summary={`Até ${product.installmentsMax}x · Pix ${product.pixDiscountPercent}%`}
+          summary={`Até ${product.installmentsMax}x · sem desconto Pix`}
         >
+          <p className="text-[11px] text-muted mb-3">
+            O desconto de 5% no Pix foi desativado. Use o campo{" "}
+            <strong>Desconto (%)</strong> em Dados do produto para Black Friday
+            e outras promoções por peça.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-xs uppercase tracking-wider text-muted">
               Parcelas (até)
@@ -1016,18 +1183,6 @@ export function ProductEditForm({
                 min={1}
                 max={12}
                 defaultValue={product.installmentsMax}
-                className="input mt-1"
-              />
-            </label>
-            <label className="block text-xs uppercase tracking-wider text-muted">
-              Desconto Pix (%)
-              <input
-                name="pixDiscountPercent"
-                type="number"
-                min={0}
-                max={30}
-                step="0.5"
-                defaultValue={product.pixDiscountPercent}
                 className="input mt-1"
               />
             </label>

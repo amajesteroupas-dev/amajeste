@@ -154,8 +154,8 @@ model Product {
   /// Parcelas sem juros (ex: 2)
   installmentsMax      Int              @default(2)
   interestFree         Boolean          @default(true)
-  /// % de desconto no Pix (ex: 5)
-  pixDiscountPercent   Float            @default(5)
+  /// % de desconto no Pix (0 = desativado)
+  pixDiscountPercent   Float            @default(0)
   showPaymentFlags     Boolean          @default(true)
   /// Frete (Melhor Envio) — peso em kg, dimensões da embalagem em cm
   weightKg             Float?
@@ -166,6 +166,8 @@ model Product {
   sizeGuide            String           @default("mg")
   /// Vídeo do produto (upload /uploads/videos/... ou URL YouTube/Vimeo)
   videoUrl             String?
+  /// Categorias extras (ex.: Black Friday) além da categoria principal
+  extraCategoryIds     String[]         @default([])
   categoryId           String
   category             Category         @relation(fields: [categoryId], references: [id])
   images               ProductImage[]

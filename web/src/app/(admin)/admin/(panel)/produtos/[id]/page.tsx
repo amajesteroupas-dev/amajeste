@@ -77,7 +77,10 @@ export default async function EditProductPage({ params, searchParams }: Props) {
           description: product.description,
           price: Number(product.price),
           costPrice: Number(product.costPrice),
+          compareAt:
+            product.compareAt == null ? null : Number(product.compareAt),
           categoryId: product.categoryId,
+          extraCategoryIds: product.extraCategoryIds || [],
           featured: product.featured,
           destaque: product.destaque,
           active: product.active,
@@ -95,6 +98,7 @@ export default async function EditProductPage({ params, searchParams }: Props) {
         categories={categories.map((c) => ({
           id: c.id,
           name: c.name,
+          slug: c.slug,
           parentId: c.parentId,
         }))}
         variants={product.variants.map((v) => ({
