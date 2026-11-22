@@ -203,8 +203,17 @@ export function ProductEditForm({
     );
   }
 
+  function moneyLabel(n: number) {
+    return Number(n).toFixed(2).replace(".", ",");
+  }
+
+  function discountBase() {
+    if (compareAt != null && compareAt > 0) return compareAt;
+    return Number(price) || 0;
+  }
+
   function applyDiscountPercent(raw: number) {
-    const pct = Math.min(90, Math.max(0, Math.round(Number(raw) || 0)));
+    const pct = Math.min(99, Math.max(0, Math.round((Number(raw) || 0) * 10) / 10));
     setDiscountPercent(pct);
     if (pct <= 0) {
       if (compareAt != null && compareAt > 0) {
@@ -214,11 +223,26 @@ export function ProductEditForm({
       setAlsoBlackFriday(false);
       return;
     }
-    const base =
-      compareAt != null && compareAt > 0 ? compareAt : Number(price) || 0;
+    const base = discountBase();
     if (base <= 0) return;
     if (compareAt == null || compareAt <= 0) setCompareAt(base);
     setPrice(Math.round(base * (1 - pct / 100) * 100) / 100);
+  }
+
+  function applyDiscountValue(raw: number) {
+    const base = discountBase();
+    if (base <= 0) return;
+    const amount = Math.max(0, Math.round((Number(raw) || 0) * 100) / 100);
+    if (amount <= 0) {
+      applyDiscountPercent(0);
+      return;
+    }
+    const capped = Math.min(amount, Math.round(base * 0.99 * 100) / 100);
+    const sale = Math.round((base - capped) * 100) / 100;
+    const pct = Math.round((capped / base) * 1000) / 10;
+    if (compareAt == null || compareAt <= 0) setCompareAt(base);
+    setPrice(sale);
+    setDiscountPercent(pct);
   }
 
   async function ensureBlackFridayCategory() {
@@ -934,29 +958,70 @@ export function ProductEditForm({
                 className="input mt-1"
               />
             </label>
-            <label className="block text-xs uppercase tracking-wider text-muted">
-              Desconto (%)
-              <HelpTip text="Informe o % de desconto. O preço atual vira o valor riscado e o preço na loja cai. Depois use o botão Black Friday." />
-              <input
-                type="number"
-                min={0}
-                max={90}
-                step={1}
-                value={discountPercent}
-                onChange={(e) => applyDiscountPercent(Number(e.target.value))}
-                className="input mt-1"
-              />
+            <div className="block text-xs uppercase tracking-wider text-muted">
+              Desconto
+              <HelpTip text="Escreva o desconto em reais ou em %. O outro campo acompanha. O preço atual vira o valor riscado e o preço na loja cai." />
+              <div className="mt-1 flex items-center gap-2">
+                <label className="min-w-0 flex-1 normal-case tracking-normal">
+                  <span className="sr-only">Desconto em reais</span>
+                  <span className="flex items-center gap-1">
+                    <span className="shrink-0 text-[11px] text-muted">R$</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={
+                        compareAt != null && compareAt > price
+                          ? Math.round((compareAt - Number(price)) * 100) / 100
+                          : 0
+                      }
+                      onChange={(e) => applyDiscountValue(Number(e.target.value))}
+                      className="input"
+                      aria-label="Desconto em reais"
+                    />
+                  </span>
+                </label>
+                <label className="w-[5.5rem] shrink-0 normal-case tracking-normal">
+                  <span className="sr-only">Desconto em porcentagem</span>
+                  <span className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      step={0.1}
+                      value={discountPercent}
+                      onChange={(e) =>
+                        applyDiscountPercent(Number(e.target.value))
+                      }
+                      className="input"
+                      aria-label="Desconto em porcentagem"
+                    />
+                    <span className="shrink-0 text-sm font-medium text-[#2a2420]">
+                      %
+                    </span>
+                  </span>
+                </label>
+              </div>
               {compareAt != null && compareAt > price ? (
-                <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
-                  De R$ {compareAt.toFixed(2).replace(".", ",")} por R${" "}
-                  {Number(price).toFixed(2).replace(".", ",")}
+                <span className="mt-1 flex flex-wrap items-baseline gap-x-1 normal-case tracking-normal text-[11px] font-normal text-muted">
+                  <span>De</span>
+                  <span className="whitespace-nowrap text-[#2a2420]">
+                    R$ {moneyLabel(compareAt)}
+                  </span>
+                  <span>por</span>
+                  <span className="whitespace-nowrap text-[#2a2420]">
+                    R$ {moneyLabel(price)}
+                  </span>
+                  <span className="whitespace-nowrap">
+                    · {String(discountPercent).replace(".", ",")}% de desconto
+                  </span>
                 </span>
               ) : (
-                <span className="block normal-case tracking-normal text-[11px] text-muted mt-1 font-normal">
-                  0 = sem promoção neste produto.
+                <span className="mt-1 block normal-case tracking-normal text-[11px] font-normal text-muted">
+                  Escreva o valor em R$ ou a %. O percentual aparece ao lado.
                 </span>
               )}
-            </label>
+            </div>
             <div className="md:col-span-2 space-y-2">
               <button
                 type="button"
